@@ -1,4 +1,3 @@
-export const CATEGORIES = ['friends', 'family', 'standup', 'concerts'];
 export const PAGE_SIZE = 25;
 
 export function hasNotes(items) {

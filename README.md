@@ -15,9 +15,9 @@ A personal tracker for things you've seen — friends, family, shows, concerts, 
 
 | Layer | Technology |
 |---|---|
-| Backend | Cloudflare Workers (vanilla JS) |
+| Backend | Cloudflare Workers + Hono + Zod |
 | Database | Cloudflare D1 (SQLite) |
-| Frontend | Vanilla HTML/CSS/JS |
+| Frontend | Preact + htm, bundled with esbuild |
 | Auth | Cloudflare Access |
 | Testing | Vitest + `@cloudflare/vitest-pool-workers` |
 
@@ -61,6 +61,14 @@ npx wrangler d1 execute seen --local --file=prod.sql
 
 ```bash
 npm test
+```
+
+### Build
+
+The frontend is bundled from `frontend/` to `public/script.js` by `build.js` (esbuild). The bundle is gitignored. `npm run dev` runs the bundler in watch mode alongside `wrangler dev`; `npm run deploy` builds before deploying.
+
+```bash
+npm run build    # one-shot production bundle
 ```
 
 ### Deploy
