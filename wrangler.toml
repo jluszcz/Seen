@@ -1,0 +1,14 @@
+name = "seen"
+main = "src/index.js"
+compatibility_date = "2024-12-01"
+compatibility_flags = ["nodejs_compat"]
+
+[assets]
+directory = "public"
+binding = "ASSETS"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "seen"
+database_id = "${D1_DATABASE_ID}"
+migrations_dir = "migrations"
