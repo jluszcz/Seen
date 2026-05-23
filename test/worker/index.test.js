@@ -19,9 +19,17 @@ async function req(method, path, body) {
 
 beforeAll(async () => {
     await env.DB.prepare(`
+        CREATE TABLE IF NOT EXISTS categories (
+            id         TEXT PRIMARY KEY,
+            name       TEXT UNIQUE NOT NULL,
+            label      TEXT NOT NULL,
+            sort_order INTEGER NOT NULL DEFAULT 0
+        )
+    `).run();
+    await env.DB.prepare(`
         CREATE TABLE IF NOT EXISTS items (
             id          TEXT PRIMARY KEY,
-            category    TEXT NOT NULL CHECK (category IN ('friends', 'family', 'standup', 'concerts')),
+            category    TEXT NOT NULL,
             description TEXT NOT NULL,
             date        TEXT NOT NULL,
             notes       TEXT,
@@ -33,6 +41,19 @@ beforeAll(async () => {
 
 beforeEach(async () => {
     await env.DB.exec('DELETE FROM items');
+    await env.DB.exec('DELETE FROM categories');
+    await env.DB.prepare(
+        "INSERT INTO categories (id, name, label, sort_order) VALUES ('cat-friends', 'friends', 'Friends', 1)"
+    ).run();
+    await env.DB.prepare(
+        "INSERT INTO categories (id, name, label, sort_order) VALUES ('cat-family', 'family', 'Family', 2)"
+    ).run();
+    await env.DB.prepare(
+        "INSERT INTO categories (id, name, label, sort_order) VALUES ('cat-standup', 'standup', 'Standup Shows', 3)"
+    ).run();
+    await env.DB.prepare(
+        "INSERT INTO categories (id, name, label, sort_order) VALUES ('cat-concerts', 'concerts', 'Concerts', 4)"
+    ).run();
 });
 
 // ---------------------------------------------------------------------------
@@ -54,6 +75,111 @@ describe('static assets', () => {
 });
 
 // ---------------------------------------------------------------------------
+// GET /api/categories
+// ---------------------------------------------------------------------------
+
+describe('GET /api/categories', () => {
+    it('returns all seeded categories ordered by sort_order', async () => {
+        const r = await req('GET', '/api/categories');
+        expect(r.status).toBe(200);
+        const { categories } = await r.json();
+        expect(categories).toHaveLength(4);
+        expect(categories[0].name).toBe('friends');
+        expect(categories[3].name).toBe('concerts');
+    });
+
+    it('returns empty array when no categories exist', async () => {
+        await env.DB.exec('DELETE FROM categories');
+        const r = await req('GET', '/api/categories');
+        expect(r.status).toBe(200);
+        expect((await r.json()).categories).toEqual([]);
+    });
+});
+
+// ---------------------------------------------------------------------------
+// POST /api/categories
+// ---------------------------------------------------------------------------
+
+describe('POST /api/categories', () => {
+    it('creates a category and returns 201', async () => {
+        const r = await req('POST', '/api/categories', { id: 'cat-new', label: 'Movies' });
+        expect(r.status).toBe(201);
+        const { category } = await r.json();
+        expect(category.id).toBe('cat-new');
+        expect(category.label).toBe('Movies');
+        expect(category.name).toBe('movies');
+    });
+
+    it('derives name slug from label', async () => {
+        const r = await req('POST', '/api/categories', { id: 'cat-tv', label: 'TV Shows' });
+        expect(r.status).toBe(201);
+        expect((await r.json()).category.name).toBe('tv-shows');
+    });
+
+    it('assigns sort_order after existing categories', async () => {
+        const r = await req('POST', '/api/categories', { id: 'cat-x', label: 'Extra' });
+        expect((await r.json()).category.sort_order).toBe(5);
+    });
+
+    it('returns 400 when label is missing', async () => {
+        const r = await req('POST', '/api/categories', { id: 'cat-x' });
+        expect(r.status).toBe(400);
+    });
+
+    it('returns 400 when id is missing', async () => {
+        const r = await req('POST', '/api/categories', { label: 'Oops' });
+        expect(r.status).toBe(400);
+    });
+
+    it('returns 409 when category name already exists', async () => {
+        const r = await req('POST', '/api/categories', { id: 'cat-dup', label: 'Friends' });
+        expect(r.status).toBe(409);
+    });
+
+    it('returns 400 for malformed JSON body', async () => {
+        const r = await worker.fetch(
+            new Request('https://example.com/api/categories', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: 'not-json',
+            }),
+            makeEnv()
+        );
+        expect(r.status).toBe(400);
+        expect((await r.json()).error).toBe('Invalid JSON body');
+    });
+});
+
+// ---------------------------------------------------------------------------
+// DELETE /api/categories/:id
+// ---------------------------------------------------------------------------
+
+describe('DELETE /api/categories/:id', () => {
+    it('deletes a category with no items', async () => {
+        const r = await req('DELETE', '/api/categories/cat-concerts');
+        expect(r.status).toBe(200);
+        expect((await r.json()).success).toBe(true);
+    });
+
+    it('category is no longer returned after deletion', async () => {
+        await req('DELETE', '/api/categories/cat-concerts');
+        const { categories } = await (await req('GET', '/api/categories')).json();
+        expect(categories.find(c => c.name === 'concerts')).toBeUndefined();
+    });
+
+    it('returns 404 for unknown id', async () => {
+        const r = await req('DELETE', '/api/categories/ghost');
+        expect(r.status).toBe(404);
+    });
+
+    it('returns 409 when category has items', async () => {
+        await req('POST', '/api/items', { id: 'i1', category: 'friends', description: 'Alice', date: '2026-01-01' });
+        const r = await req('DELETE', '/api/categories/cat-friends');
+        expect(r.status).toBe(409);
+    });
+});
+
+// ---------------------------------------------------------------------------
 // GET /api/items
 // ---------------------------------------------------------------------------
 
@@ -63,7 +189,7 @@ describe('GET /api/items', () => {
         expect(r.status).toBe(400);
     });
 
-    it('returns 400 for invalid category', async () => {
+    it('returns 400 for category not in categories table', async () => {
         const r = await req('GET', '/api/items?category=movies');
         expect(r.status).toBe(400);
     });
@@ -126,7 +252,7 @@ describe('POST /api/items', () => {
         expect(r.status).toBe(400);
     });
 
-    it('returns 400 for invalid category', async () => {
+    it('returns 400 for category not in categories table', async () => {
         const r = await req('POST', '/api/items', { id: 'n5', category: 'movies', description: 'X', date: '2026-01-01' });
         expect(r.status).toBe(400);
     });

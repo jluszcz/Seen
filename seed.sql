@@ -1,6 +1,12 @@
 -- Local dev seed data. Apply with:
 --   npx wrangler d1 execute seen --local --file=seed.sql
 
+INSERT OR IGNORE INTO categories (id, name, label, sort_order) VALUES
+    ('cat-friends',  'friends',  'Friends',       1),
+    ('cat-family',   'family',   'Family',        2),
+    ('cat-standup',  'standup',  'Standup Shows', 3),
+    ('cat-concerts', 'concerts', 'Concerts',      4);
+
 INSERT OR IGNORE INTO items (id, category, description, date, notes, created_at, updated_at) VALUES
     ('a1b2c3d4-e5f6-4a7b-8c9d-e0f1a2b3c4d5', 'friends', 'Alice',        '2026-04-12', 'Grabbed coffee downtown', '2026-04-12T10:00:00Z', '2026-04-12T10:00:00Z'),
     ('b2c3d4e5-f6a7-4b8c-9d0e-f1a2b3c4d5e6', 'friends', 'Bob',          '2026-03-28', null,                      '2026-03-28T18:00:00Z', '2026-03-28T18:00:00Z'),

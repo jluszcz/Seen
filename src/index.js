@@ -1,5 +1,3 @@
-const VALID_CATEGORIES = new Set(['friends', 'family', 'standup', 'concerts']);
-
 function json(data, status = 200) {
     return new Response(JSON.stringify(data), {
         status,
@@ -20,6 +18,22 @@ export default {
 
     async handleApiRequest(request, env, url) {
         const method = request.method;
+
+        // GET /api/categories
+        if (method === 'GET' && url.pathname === '/api/categories') {
+            return this.listCategories(env);
+        }
+
+        // POST /api/categories
+        if (method === 'POST' && url.pathname === '/api/categories') {
+            return this.createCategory(request, env);
+        }
+
+        // DELETE /api/categories/:id
+        if (method === 'DELETE' && url.pathname.startsWith('/api/categories/')) {
+            const id = url.pathname.slice('/api/categories/'.length);
+            return this.deleteCategory(env, id);
+        }
 
         // GET /api/items?category=X
         if (method === 'GET' && url.pathname === '/api/items') {
@@ -46,12 +60,74 @@ export default {
         return json({ error: 'Unknown API endpoint' }, 404);
     },
 
+    async listCategories(env) {
+        const { results } = await env.DB.prepare(
+            'SELECT * FROM categories ORDER BY sort_order ASC, label ASC'
+        ).all();
+        return json({ categories: results });
+    },
+
+    async createCategory(request, env) {
+        let body;
+        try {
+            body = await request.json();
+        } catch {
+            return json({ error: 'Invalid JSON body' }, 400);
+        }
+
+        const { id, label } = body;
+
+        if (!id || typeof id !== 'string') return json({ error: 'id is required' }, 400);
+        if (!label || typeof label !== 'string') return json({ error: 'label is required' }, 400);
+
+        const name = label.trim().toLowerCase().replace(/\s+/g, '-');
+
+        const existing = await env.DB.prepare(
+            'SELECT id FROM categories WHERE name = ?'
+        ).bind(name).first();
+        if (existing) return json({ error: 'A category with this name already exists' }, 409);
+
+        const row = await env.DB.prepare(
+            'SELECT COALESCE(MAX(sort_order), 0) AS max_order FROM categories'
+        ).first();
+        const sortOrder = row.max_order + 1;
+
+        await env.DB.prepare(
+            'INSERT INTO categories (id, name, label, sort_order) VALUES (?, ?, ?, ?)'
+        ).bind(id, name, label.trim(), sortOrder).run();
+
+        const category = await env.DB.prepare(
+            'SELECT * FROM categories WHERE id = ?'
+        ).bind(id).first();
+        return json({ category }, 201);
+    },
+
+    async deleteCategory(env, id) {
+        if (!id) return json({ error: 'id is required' }, 400);
+
+        const existing = await env.DB.prepare(
+            'SELECT * FROM categories WHERE id = ?'
+        ).bind(id).first();
+        if (!existing) return json({ error: 'Category not found' }, 404);
+
+        const row = await env.DB.prepare(
+            'SELECT COUNT(*) AS count FROM items WHERE category = ?'
+        ).bind(existing.name).first();
+        if (row.count > 0) return json({ error: 'Cannot delete a category that has items' }, 409);
+
+        await env.DB.prepare('DELETE FROM categories WHERE id = ?').bind(id).run();
+        return json({ success: true });
+    },
+
     async listItems(request, env, url) {
         const category = url.searchParams.get('category');
 
-        if (!category || !VALID_CATEGORIES.has(category)) {
-            return json({ error: 'Valid category is required' }, 400);
-        }
+        if (!category) return json({ error: 'Valid category is required' }, 400);
+
+        const cat = await env.DB.prepare(
+            'SELECT id FROM categories WHERE name = ?'
+        ).bind(category).first();
+        if (!cat) return json({ error: 'Valid category is required' }, 400);
 
         const { results } = await env.DB.prepare(
             'SELECT * FROM items WHERE category = ? ORDER BY date DESC'
@@ -71,9 +147,14 @@ export default {
         const { id, category, description, date, notes } = body;
 
         if (!id || typeof id !== 'string') return json({ error: 'id is required' }, 400);
-        if (!category || !VALID_CATEGORIES.has(category)) return json({ error: 'Valid category is required' }, 400);
+        if (!category || typeof category !== 'string') return json({ error: 'Valid category is required' }, 400);
         if (!description || typeof description !== 'string') return json({ error: 'description is required' }, 400);
         if (!date || typeof date !== 'string') return json({ error: 'date is required' }, 400);
+
+        const cat = await env.DB.prepare(
+            'SELECT id FROM categories WHERE name = ?'
+        ).bind(category).first();
+        if (!cat) return json({ error: 'Valid category is required' }, 400);
 
         const now = new Date().toISOString();
 
