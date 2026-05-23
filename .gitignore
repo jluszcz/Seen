@@ -1,8 +1,10 @@
-node_modules/
+*.local
+.claude/
+.dev.vars
+.env
 .wrangler/
 coverage/
-*.local
-.dev.vars
-.claude/
+node_modules/
 prod.sql
-.env
+public/script.js
+public/script.js.map

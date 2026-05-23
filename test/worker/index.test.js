@@ -293,6 +293,12 @@ describe('PUT /api/items/:id', () => {
         const r = await req('PUT', '/api/items/upd1', { description: '' });
         expect(r.status).toBe(400);
     });
+
+    it('returns 400 for an empty body (no fields provided)', async () => {
+        const r = await req('PUT', '/api/items/upd1', {});
+        expect(r.status).toBe(400);
+        expect((await r.json()).error).toMatch(/at least one field/i);
+    });
 });
 
 // ---------------------------------------------------------------------------

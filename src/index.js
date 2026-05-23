@@ -1,210 +1,143 @@
-function json(data, status = 200) {
-    return new Response(JSON.stringify(data), {
-        status,
-        headers: { 'Content-Type': 'application/json' },
-    });
-}
+import { Hono } from 'hono';
+import { HTTPException } from 'hono/http-exception';
+import { zValidator } from '@hono/zod-validator';
+import { z } from 'zod';
 
-export default {
-    async fetch(request, env) {
-        const url = new URL(request.url);
+const app = new Hono();
 
-        if (url.pathname.startsWith('/api/')) {
-            return this.handleApiRequest(request, env, url);
-        }
-
-        return env.ASSETS.fetch(request);
-    },
-
-    async handleApiRequest(request, env, url) {
-        const method = request.method;
-
-        // GET /api/categories
-        if (method === 'GET' && url.pathname === '/api/categories') {
-            return this.listCategories(env);
-        }
-
-        // POST /api/categories
-        if (method === 'POST' && url.pathname === '/api/categories') {
-            return this.createCategory(request, env);
-        }
-
-        // DELETE /api/categories/:id
-        if (method === 'DELETE' && url.pathname.startsWith('/api/categories/')) {
-            const id = url.pathname.slice('/api/categories/'.length);
-            return this.deleteCategory(env, id);
-        }
-
-        // GET /api/items?category=X
-        if (method === 'GET' && url.pathname === '/api/items') {
-            return this.listItems(request, env, url);
-        }
-
-        // POST /api/items
-        if (method === 'POST' && url.pathname === '/api/items') {
-            return this.createItem(request, env);
-        }
-
-        // PUT /api/items/:id
-        if (method === 'PUT' && url.pathname.startsWith('/api/items/')) {
-            const id = url.pathname.slice('/api/items/'.length);
-            return this.updateItem(request, env, id);
-        }
-
-        // DELETE /api/items/:id
-        if (method === 'DELETE' && url.pathname.startsWith('/api/items/')) {
-            const id = url.pathname.slice('/api/items/'.length);
-            return this.deleteItem(env, id);
-        }
-
-        return json({ error: 'Unknown API endpoint' }, 404);
-    },
-
-    async listCategories(env) {
-        const { results } = await env.DB.prepare(
-            'SELECT * FROM categories ORDER BY sort_order ASC, label ASC'
-        ).all();
-        return json({ categories: results });
-    },
-
-    async createCategory(request, env) {
-        let body;
-        try {
-            body = await request.json();
-        } catch {
-            return json({ error: 'Invalid JSON body' }, 400);
-        }
-
-        const { id, label } = body;
-
-        if (!id || typeof id !== 'string') return json({ error: 'id is required' }, 400);
-        if (!label || typeof label !== 'string') return json({ error: 'label is required' }, 400);
-
-        const name = label.trim().toLowerCase().replace(/\s+/g, '-');
-
-        const existing = await env.DB.prepare(
-            'SELECT id FROM categories WHERE name = ?'
-        ).bind(name).first();
-        if (existing) return json({ error: 'A category with this name already exists' }, 409);
-
-        const row = await env.DB.prepare(
-            'SELECT COALESCE(MAX(sort_order), 0) AS max_order FROM categories'
-        ).first();
-        const sortOrder = row.max_order + 1;
-
-        await env.DB.prepare(
-            'INSERT INTO categories (id, name, label, sort_order) VALUES (?, ?, ?, ?)'
-        ).bind(id, name, label.trim(), sortOrder).run();
-
-        const category = await env.DB.prepare(
-            'SELECT * FROM categories WHERE id = ?'
-        ).bind(id).first();
-        return json({ category }, 201);
-    },
-
-    async deleteCategory(env, id) {
-        if (!id) return json({ error: 'id is required' }, 400);
-
-        const existing = await env.DB.prepare(
-            'SELECT * FROM categories WHERE id = ?'
-        ).bind(id).first();
-        if (!existing) return json({ error: 'Category not found' }, 404);
-
-        const row = await env.DB.prepare(
-            'SELECT COUNT(*) AS count FROM items WHERE category = ?'
-        ).bind(existing.name).first();
-        if (row.count > 0) return json({ error: 'Cannot delete a category that has items' }, 409);
-
-        await env.DB.prepare('DELETE FROM categories WHERE id = ?').bind(id).run();
-        return json({ success: true });
-    },
-
-    async listItems(request, env, url) {
-        const category = url.searchParams.get('category');
-
-        if (!category) return json({ error: 'Valid category is required' }, 400);
-
-        const cat = await env.DB.prepare(
-            'SELECT id FROM categories WHERE name = ?'
-        ).bind(category).first();
-        if (!cat) return json({ error: 'Valid category is required' }, 400);
-
-        const { results } = await env.DB.prepare(
-            'SELECT * FROM items WHERE category = ? ORDER BY date DESC'
-        ).bind(category).all();
-
-        return json({ items: results });
-    },
-
-    async createItem(request, env) {
-        let body;
-        try {
-            body = await request.json();
-        } catch {
-            return json({ error: 'Invalid JSON body' }, 400);
-        }
-
-        const { id, category, description, date, notes } = body;
-
-        if (!id || typeof id !== 'string') return json({ error: 'id is required' }, 400);
-        if (!category || typeof category !== 'string') return json({ error: 'Valid category is required' }, 400);
-        if (!description || typeof description !== 'string') return json({ error: 'description is required' }, 400);
-        if (!date || typeof date !== 'string') return json({ error: 'date is required' }, 400);
-
-        const cat = await env.DB.prepare(
-            'SELECT id FROM categories WHERE name = ?'
-        ).bind(category).first();
-        if (!cat) return json({ error: 'Valid category is required' }, 400);
-
-        const now = new Date().toISOString();
-
-        await env.DB.prepare(
-            'INSERT INTO items (id, category, description, date, notes, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)'
-        // notes: empty string is treated as null — both mean "no notes"
-        ).bind(id, category, description.trim(), date, notes || null, now, now).run();
-
-        const item = await env.DB.prepare('SELECT * FROM items WHERE id = ?').bind(id).first();
-        return json({ item }, 201);
-    },
-
-    async updateItem(request, env, id) {
-        if (!id) return json({ error: 'id is required' }, 400);
-
-        let body;
-        try {
-            body = await request.json();
-        } catch {
-            return json({ error: 'Invalid JSON body' }, 400);
-        }
-
-        const existing = await env.DB.prepare('SELECT * FROM items WHERE id = ?').bind(id).first();
-        if (!existing) return json({ error: 'Item not found' }, 404);
-
-        const description = 'description' in body ? body.description : existing.description;
-        const date = 'date' in body ? body.date : existing.date;
-        const notes = 'notes' in body ? body.notes : existing.notes;
-
-        if (!description || typeof description !== 'string') return json({ error: 'description cannot be empty' }, 400);
-        if (!date || typeof date !== 'string') return json({ error: 'date cannot be empty' }, 400);
-
-        const now = new Date().toISOString();
-
-        await env.DB.prepare(
-            'UPDATE items SET description = ?, date = ?, notes = ?, updated_at = ? WHERE id = ?'
-        // notes: empty string is treated as null — both mean "no notes"
-        ).bind(description.trim(), date, notes || null, now, id).run();
-
-        const item = await env.DB.prepare('SELECT * FROM items WHERE id = ?').bind(id).first();
-        return json({ item });
-    },
-
-    async deleteItem(env, id) {
-        if (!id) return json({ error: 'id is required' }, 400);
-
-        const existing = await env.DB.prepare('SELECT id FROM items WHERE id = ?').bind(id).first();
-        if (!existing) return json({ error: 'Item not found' }, 404);
-
-        await env.DB.prepare('DELETE FROM items WHERE id = ?').bind(id).run();
-        return json({ success: true });
-    },
+const onInvalid = (result, c) => {
+    if (!result.success) {
+        const message = result.error.issues.map(i => i.message).join('; ') || 'Invalid input';
+        return c.json({ error: message }, 400);
+    }
 };
+
+const categoryCreate = z.object({
+    id: z.string().min(1, { message: 'id is required' }),
+    label: z.string().min(1, { message: 'label is required' }),
+});
+
+const itemCreate = z.object({
+    id: z.string().min(1, { message: 'id is required' }),
+    category: z.string().min(1, { message: 'category is required' }),
+    description: z.string().min(1, { message: 'description is required' }),
+    date: z.string().min(1, { message: 'date is required' }),
+    notes: z.string().nullish(),
+});
+
+const itemUpdate = z.object({
+    description: z.string().min(1, { message: 'description cannot be empty' }).optional(),
+    date: z.string().min(1, { message: 'date cannot be empty' }).optional(),
+    notes: z.string().nullish(),
+}).refine(
+    b => 'description' in b || 'date' in b || 'notes' in b,
+    { message: 'At least one field is required' },
+);
+
+app.onError((err, c) => {
+    if (err instanceof HTTPException && err.status === 400 && err.message === 'Malformed JSON in request body') {
+        return c.json({ error: 'Invalid JSON body' }, 400);
+    }
+    throw err;
+});
+
+app.get('/api/categories', async (c) => {
+    const { results } = await c.env.DB.prepare(
+        'SELECT * FROM categories ORDER BY sort_order ASC, label ASC'
+    ).all();
+    return c.json({ categories: results });
+});
+
+app.post('/api/categories', zValidator('json', categoryCreate, onInvalid), async (c) => {
+    const { id, label } = c.req.valid('json');
+    const name = label.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+    if (!name) return c.json({ error: 'Label must contain at least one alphanumeric character' }, 400);
+
+    const existing = await c.env.DB.prepare('SELECT id FROM categories WHERE name = ?').bind(name).first();
+    if (existing) return c.json({ error: 'A category with this name already exists' }, 409);
+
+    const row = await c.env.DB.prepare('SELECT COALESCE(MAX(sort_order), 0) AS max_order FROM categories').first();
+    const sortOrder = row.max_order + 1;
+
+    await c.env.DB.prepare(
+        'INSERT INTO categories (id, name, label, sort_order) VALUES (?, ?, ?, ?)'
+    ).bind(id, name, label.trim(), sortOrder).run();
+
+    const category = await c.env.DB.prepare('SELECT * FROM categories WHERE id = ?').bind(id).first();
+    return c.json({ category }, 201);
+});
+
+app.delete('/api/categories/:id', async (c) => {
+    const id = c.req.param('id');
+    const existing = await c.env.DB.prepare('SELECT * FROM categories WHERE id = ?').bind(id).first();
+    if (!existing) return c.json({ error: 'Category not found' }, 404);
+
+    const row = await c.env.DB.prepare('SELECT COUNT(*) AS count FROM items WHERE category = ?').bind(existing.name).first();
+    if (row.count > 0) return c.json({ error: 'Cannot delete a category that has items' }, 409);
+
+    await c.env.DB.prepare('DELETE FROM categories WHERE id = ?').bind(id).run();
+    return c.json({ success: true });
+});
+
+app.get('/api/items', async (c) => {
+    const category = c.req.query('category');
+    if (!category) return c.json({ error: 'category query param is required' }, 400);
+
+    const cat = await c.env.DB.prepare('SELECT id FROM categories WHERE name = ?').bind(category).first();
+    if (!cat) return c.json({ error: `Unknown category: ${category}` }, 400);
+
+    const { results } = await c.env.DB.prepare(
+        'SELECT * FROM items WHERE category = ? ORDER BY date DESC'
+    ).bind(category).all();
+    return c.json({ items: results });
+});
+
+app.post('/api/items', zValidator('json', itemCreate, onInvalid), async (c) => {
+    const { id, category, description, date, notes } = c.req.valid('json');
+
+    const cat = await c.env.DB.prepare('SELECT id FROM categories WHERE name = ?').bind(category).first();
+    if (!cat) return c.json({ error: `Unknown category: ${category}` }, 400);
+
+    const now = new Date().toISOString();
+    await c.env.DB.prepare(
+        'INSERT INTO items (id, category, description, date, notes, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)'
+    ).bind(id, category, description.trim(), date, notes || null, now, now).run();
+
+    const item = await c.env.DB.prepare('SELECT * FROM items WHERE id = ?').bind(id).first();
+    return c.json({ item }, 201);
+});
+
+app.put('/api/items/:id', zValidator('json', itemUpdate, onInvalid), async (c) => {
+    const id = c.req.param('id');
+    const body = c.req.valid('json');
+
+    const existing = await c.env.DB.prepare('SELECT * FROM items WHERE id = ?').bind(id).first();
+    if (!existing) return c.json({ error: 'Item not found' }, 404);
+
+    const description = 'description' in body ? body.description : existing.description;
+    const date = 'date' in body ? body.date : existing.date;
+    const notes = 'notes' in body ? body.notes : existing.notes;
+
+    const now = new Date().toISOString();
+    await c.env.DB.prepare(
+        'UPDATE items SET description = ?, date = ?, notes = ?, updated_at = ? WHERE id = ?'
+    ).bind(description.trim(), date, notes || null, now, id).run();
+
+    const item = await c.env.DB.prepare('SELECT * FROM items WHERE id = ?').bind(id).first();
+    return c.json({ item });
+});
+
+app.delete('/api/items/:id', async (c) => {
+    const id = c.req.param('id');
+    const existing = await c.env.DB.prepare('SELECT id FROM items WHERE id = ?').bind(id).first();
+    if (!existing) return c.json({ error: 'Item not found' }, 404);
+
+    await c.env.DB.prepare('DELETE FROM items WHERE id = ?').bind(id).run();
+    return c.json({ success: true });
+});
+
+app.all('/api/*', (c) => c.json({ error: 'Unknown API endpoint' }, 404));
+
+app.all('*', (c) => c.env.ASSETS.fetch(c.req.raw));
+
+export default app;

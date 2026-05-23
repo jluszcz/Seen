@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { hasNotes, sortItems, filterItems, formatDate } from '../../public/utils.js';
+import { hasNotes, sortItems, filterItems, formatDate } from '../../frontend/utils.js';
 
 // ---------------------------------------------------------------------------
 // hasNotes

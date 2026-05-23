@@ -4,32 +4,47 @@ This file provides guidance to Claude Code when working with code in this reposi
 
 ## Project Overview
 
-**Seen** is a personal tracker for things you've seen across categories (Friends, Family, Standup Shows, Concerts). Built as a Cloudflare Workers application with a D1 (SQLite) database, static frontend assets, and Cloudflare Access for authentication.
+**Seen** is a personal tracker for things you've seen across user-defined categories (e.g. Friends, Family, Standup Shows, Concerts — categories are created and deleted at runtime, not hardcoded). Built as a Cloudflare Workers application with a D1 (SQLite) database, static frontend assets, and Cloudflare Access for authentication.
 
 ## Repository Structure
 
-- `public/` — Static frontend assets
-  - `index.html` — Single-page application
+- `frontend/` — Preact + htm frontend source
+  - `script.js` — `App` component + child components managing all state and rendering
+  - `utils.js` — Pure helpers (`filterItems`, `sortItems`, `hasNotes`, `formatDate`, `PAGE_SIZE`); shared with tests
+- `public/` — Served static assets
+  - `index.html` — App shell that loads the bundled script
   - `styles.css` — Minimal, neutral styling
-  - `script.js` — `SeenApp` class managing all state and rendering
+  - `script.js`, `script.js.map` — esbuild output (gitignored, produced by `npm run build`)
 - `src/` — Cloudflare Workers backend
-  - `index.js` — Worker handler + CRUD API for items
+  - `index.js` — Hono app + CRUD API for categories and items
 - `migrations/` — D1 SQL migrations (applied via wrangler)
 - `test/` — Tests
   - `test/worker/` — Worker API tests (use `@cloudflare/vitest-pool-workers`)
   - `test/frontend/` — Frontend unit tests (logic only, no DOM)
+- `build.js` — esbuild bundler for the frontend (one-shot + `--watch` mode)
 - `seed.sql` — Representative seed data for local dev
 - `wrangler.toml` — Cloudflare Workers configuration
 - `package.json` — Dependencies and scripts
 
 ## Technology Stack
 
-- **Backend**: Cloudflare Workers (vanilla JavaScript)
+- **Backend**: Cloudflare Workers + [Hono](https://hono.dev/) router with [Zod](https://zod.dev/) validation
 - **Database**: Cloudflare D1 (SQLite)
-- **Frontend**: Vanilla HTML5, CSS3, JavaScript (ES6+)
+- **Frontend**: [Preact](https://preactjs.com/) + [htm](https://github.com/developit/htm) (no JSX build step required), bundled with esbuild
 - **Authentication**: Cloudflare Access (zero-code, dashboard-configured)
 - **Testing**: Vitest + `@cloudflare/vitest-pool-workers`
-- **Build**: Wrangler CLI
+- **Build**: esbuild (frontend bundle) + Wrangler CLI (Worker deploy)
+
+## Build & Bundling
+
+The frontend lives in `frontend/` and is bundled to `public/script.js` by `build.js` (esbuild). The bundle and its sourcemap are gitignored.
+
+- `npm run build` — one-shot production bundle (minified)
+- `npm run dev` — runs `node build.js --watch` and `wrangler dev` concurrently (sourcemaps on, no minify)
+- `npm run deploy` — builds, then `wrangler deploy`
+- `npm test` — runs Vitest only. Tests import from `frontend/utils.js` directly; they do not depend on the bundle.
+
+When editing the frontend, edit files under `frontend/`. Do not edit `public/script.js` — it is build output.
 
 ## Development Setup
 
@@ -78,24 +93,33 @@ npm test
 - Only works in production; local dev bypasses auth
 
 ### Database Schema
-Single `items` table:
-- `id` — UUID primary key (generated client-side)
-- `category` — one of: `friends`, `family`, `standup`, `concerts`
-- `description` — required text
-- `date` — required ISO date string (`YYYY-MM-DD`)
-- `notes` — optional text (NULL if not set)
-- `created_at`, `updated_at` — ISO timestamps
+Two tables:
+- `categories`
+  - `id` — UUID primary key (generated client-side)
+  - `name` — URL-safe slug derived from `label` (`[a-z0-9-]+`); also the value stored in `items.category`
+  - `label` — display name
+  - `sort_order` — integer ordering for tabs
+- `items`
+  - `id` — UUID primary key (generated client-side)
+  - `category` — `categories.name` slug (foreign-key by convention, not enforced)
+  - `description` — required text
+  - `date` — required ISO date string (`YYYY-MM-DD`)
+  - `notes` — optional text (NULL if not set)
+  - `created_at`, `updated_at` — ISO timestamps
 
 ### API Routes
+- `GET /api/categories` — list all categories ordered by `sort_order`
+- `POST /api/categories` — create category (`{ id, label }`); `name` slug is derived server-side
+- `DELETE /api/categories/:id` — delete category (409 if it still has items)
 - `GET /api/items?category=X` — list all items for a category
 - `POST /api/items` — create item (`{ id, category, description, date, notes }`)
 - `PUT /api/items/:id` — update item fields
 - `DELETE /api/items/:id` — delete item
 
 ### Frontend
-- `SeenApp` class owns all state (current category, items, sort, filters, rendered count)
+- `App` (Preact functional component) owns top-level state (categories, current category, items, sort, filters, rendered count); cell-level edit state lives in `EditableCell`
 - Notes column is hidden per-category when all `notes` values are null
-- Inline editing: click a cell → input appears; Enter/blur saves; Escape cancels
+- Inline editing: click a cell → input appears; Enter/blur saves; Escape cancels (cancel uses a `cancelledRef` flag so the synthetic `onBlur` becomes a no-op on Escape)
 - Per-column filters in a second header row; date filter matches both ISO (`2026-01`) and locale (`Jan`) substrings
 - Infinite scroll: client renders 25 rows initially, appends another 25 as an `IntersectionObserver` sentinel enters the viewport
 
