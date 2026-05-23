@@ -7,7 +7,7 @@ A personal tracker for things you've seen — friends, family, shows, concerts, 
 - Track items across user-defined categories
 - Inline cell editing — click to edit, Enter/blur to save, Escape to cancel
 - Notes column auto-hides when all values in a category are empty
-- Sortable columns, client-side pagination (25 rows/page)
+- Sortable columns and per-column filters; infinite scroll loads 25 rows at a time
 - Categories are fully dynamic — add or remove them from the UI
 - Zero-code authentication via Cloudflare Access
 

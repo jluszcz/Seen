@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { hasNotes, sortItems, getPage, pageCount, formatDate } from '../../public/utils.js';
+import { hasNotes, sortItems, filterItems, formatDate } from '../../public/utils.js';
 
 // ---------------------------------------------------------------------------
 // hasNotes
@@ -78,57 +78,52 @@ describe('sortItems', () => {
 });
 
 // ---------------------------------------------------------------------------
-// getPage
+// filterItems
 // ---------------------------------------------------------------------------
 
-const FIFTY = Array.from({ length: 50 }, (_, i) => ({ id: String(i) }));
-
-describe('getPage', () => {
-    it('returns first 25 items on page 1', () => {
-        const page = getPage(FIFTY, 1, 25);
-        expect(page).toHaveLength(25);
-        expect(page[0].id).toBe('0');
-        expect(page[24].id).toBe('24');
+describe('filterItems', () => {
+    it('returns all items when filters is empty', () => {
+        expect(filterItems(ITEMS, {})).toHaveLength(3);
     });
 
-    it('returns second 25 items on page 2', () => {
-        const page = getPage(FIFTY, 2, 25);
-        expect(page).toHaveLength(25);
-        expect(page[0].id).toBe('25');
+    it('returns all items when filters is null/undefined', () => {
+        expect(filterItems(ITEMS, null)).toHaveLength(3);
+        expect(filterItems(ITEMS, undefined)).toHaveLength(3);
     });
 
-    it('returns fewer items on the last partial page', () => {
-        const items = Array.from({ length: 30 }, (_, i) => ({ id: String(i) }));
-        const page = getPage(items, 2, 25);
-        expect(page).toHaveLength(5);
+    it('matches description case-insensitively', () => {
+        const out = filterItems(ITEMS, { description: 'ALI' });
+        expect(out.map(i => i.description)).toEqual(['Alice']);
     });
 
-    it('returns empty array for page beyond total', () => {
-        expect(getPage(FIFTY, 10, 25)).toHaveLength(0);
-    });
-});
-
-// ---------------------------------------------------------------------------
-// pageCount
-// ---------------------------------------------------------------------------
-
-describe('pageCount', () => {
-    it('returns 1 for empty list', () => {
-        expect(pageCount(0)).toBe(1);
+    it('matches notes case-insensitively, treating null as no match', () => {
+        const out = filterItems(ITEMS, { notes: 'nic' });
+        expect(out.map(i => i.description)).toEqual(['Alice']);
     });
 
-    it('returns 1 when items fit on one page', () => {
-        expect(pageCount(10, 25)).toBe(1);
-        expect(pageCount(25, 25)).toBe(1);
+    it('matches date by locale-formatted string', () => {
+        const out = filterItems(ITEMS, { date: 'jan' });
+        expect(out.map(i => i.description)).toEqual(['Alice']);
     });
 
-    it('returns 2 when items exceed one page', () => {
-        expect(pageCount(26, 25)).toBe(2);
+    it('matches date by ISO substring', () => {
+        const out = filterItems(ITEMS, { date: '2026-01' });
+        expect(out.map(i => i.description)).toEqual(['Alice']);
     });
 
-    it('returns correct count for exact multiples', () => {
-        expect(pageCount(50, 25)).toBe(2);
-        expect(pageCount(75, 25)).toBe(3);
+    it('combines multiple filters with AND semantics', () => {
+        const out = filterItems(ITEMS, { description: 'a', date: '2026' });
+        expect(out.map(i => i.description)).toEqual(['Charlie', 'Alice']);
+    });
+
+    it('returns empty array when nothing matches', () => {
+        expect(filterItems(ITEMS, { description: 'zzz' })).toEqual([]);
+    });
+
+    it('handles items with missing description/notes', () => {
+        const items = [{ id: '1', description: null, date: '2026-01-01', notes: null }];
+        expect(filterItems(items, { description: 'x' })).toEqual([]);
+        expect(filterItems(items, { notes: 'x' })).toEqual([]);
     });
 });
 

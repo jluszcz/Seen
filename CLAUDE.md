@@ -93,10 +93,11 @@ Single `items` table:
 - `DELETE /api/items/:id` — delete item
 
 ### Frontend
-- `SeenApp` class owns all state (current category, items, sort, page)
+- `SeenApp` class owns all state (current category, items, sort, filters, rendered count)
 - Notes column is hidden per-category when all `notes` values are null
 - Inline editing: click a cell → input appears; Enter/blur saves; Escape cancels
-- Pagination: 25 rows/page, client-side
+- Per-column filters in a second header row; date filter matches both ISO (`2026-01`) and locale (`Jan`) substrings
+- Infinite scroll: client renders 25 rows initially, appends another 25 as an `IntersectionObserver` sentinel enters the viewport
 
 ## Configuration Notes
 
