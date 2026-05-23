@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Seen</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Seen</h1>
+        </header>
+        <nav class="tabs">
+            <button class="tab active" data-category="friends">Friends</button>
+            <button class="tab" data-category="family">Family</button>
+            <button class="tab" data-category="standup">Standup Shows</button>
+            <button class="tab" data-category="concerts">Concerts</button>
+        </nav>
+        <main class="app">
+            <div id="loading" class="loading">Loading...</div>
+            <div id="error" class="error" style="display:none;"></div>
+            <div id="table-area" style="display:none;">
+                <div class="table-toolbar">
+                    <button id="add-btn" class="add-btn">+ Add</button>
+                </div>
+                <div class="table-wrapper">
+                    <table id="items-table">
+                        <thead id="table-head"></thead>
+                        <tbody id="table-body"></tbody>
+                    </table>
+                </div>
+                <div class="pagination" id="pagination"></div>
+            </div>
+        </main>
+    </div>
+    <script type="module" src="script.js"></script>
+</body>
+</html>
