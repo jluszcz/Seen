@@ -14,19 +14,27 @@ export function sortItems(items, column, direction) {
     });
 }
 
-export function getPage(items, page, perPage = PAGE_SIZE) {
-    const start = (page - 1) * perPage;
-    return items.slice(start, start + perPage);
-}
-
-export function pageCount(totalItems, perPage = PAGE_SIZE) {
-    return Math.max(1, Math.ceil(totalItems / perPage));
-}
-
 export function formatDate(isoDate) {
     if (!isoDate) return '';
     const [year, month, day] = isoDate.split('-').map(Number);
     return new Date(year, month - 1, day).toLocaleDateString('en-US', {
         month: 'short', day: 'numeric', year: 'numeric',
+    });
+}
+
+export function filterItems(items, filters) {
+    const { description = '', date = '', notes = '' } = filters || {};
+    const descQ = description.toLowerCase();
+    const dateQ = date.toLowerCase();
+    const notesQ = notes.toLowerCase();
+    return items.filter(item => {
+        if (descQ && !(item.description ?? '').toLowerCase().includes(descQ)) return false;
+        if (dateQ) {
+            const iso = (item.date ?? '').toLowerCase();
+            const pretty = formatDate(item.date).toLowerCase();
+            if (!iso.includes(dateQ) && !pretty.includes(dateQ)) return false;
+        }
+        if (notesQ && !(item.notes ?? '').toLowerCase().includes(notesQ)) return false;
+        return true;
     });
 }

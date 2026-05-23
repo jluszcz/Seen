@@ -1,4 +1,4 @@
-import { hasNotes, sortItems, getPage, pageCount, formatDate, PAGE_SIZE } from './utils.js';
+import { hasNotes, sortItems, filterItems, formatDate, PAGE_SIZE } from './utils.js';
 
 class SeenApp {
     constructor() {
@@ -7,8 +7,10 @@ class SeenApp {
         this.items = [];
         this.sortColumn = 'date';
         this.sortDir = 'desc';
-        this.page = 1;
+        this.renderedCount = PAGE_SIZE;
         this.showNotes = false;
+        this.filters = {};
+        this.loading = false;
 
         this.tabsEl = document.getElementById('tabs');
         this.loadingEl = document.getElementById('loading');
@@ -16,12 +18,26 @@ class SeenApp {
         this.tableArea = document.getElementById('table-area');
         this.tableHead = document.getElementById('table-head');
         this.tableBody = document.getElementById('table-body');
-        this.paginationEl = document.getElementById('pagination');
         this.addBtn = document.getElementById('add-btn');
 
         this.addBtn.addEventListener('click', () => this.addRow());
+        this.setupInfiniteScroll();
 
         this.init();
+    }
+
+    setupInfiniteScroll() {
+        const sentinel = document.getElementById('scroll-sentinel');
+        this.observer = new IntersectionObserver(entries => {
+            if (!entries[0].isIntersecting) return;
+            if (this.loading) return;
+            const filtered = filterItems(this.items, this.filters);
+            const sorted = sortItems(filtered, this.sortColumn, this.sortDir);
+            if (this.renderedCount >= sorted.length) return;
+            this.renderedCount += PAGE_SIZE;
+            this.renderBody(sorted.slice(0, this.renderedCount));
+        }, { rootMargin: '200px' });
+        this.observer.observe(sentinel);
     }
 
     async init() {
@@ -85,8 +101,9 @@ class SeenApp {
         this.category = category;
         this.sortColumn = 'date';
         this.sortDir = 'desc';
-        this.page = 1;
+        this.renderedCount = PAGE_SIZE;
         this.showNotes = false;
+        this.filters = {};
         this.renderTabs();
         await this.load();
     }
@@ -110,8 +127,9 @@ class SeenApp {
             this.categories.push(category);
             this.category = category.name;
             this.items = [];
-            this.page = 1;
+            this.renderedCount = PAGE_SIZE;
             this.showNotes = false;
+            this.filters = {};
             this.renderTabs();
             this.render();
         } catch (err) {
@@ -133,8 +151,9 @@ class SeenApp {
                 this.category = this.categories[0]?.name ?? null;
             }
             this.items = [];
-            this.page = 1;
+            this.renderedCount = PAGE_SIZE;
             this.showNotes = false;
+            this.filters = {};
             this.renderTabs();
             if (this.category) {
                 await this.load();
@@ -148,6 +167,7 @@ class SeenApp {
     }
 
     async load() {
+        this.loading = true;
         this.showLoading();
         try {
             const r = await fetch(`/api/items?category=${this.category}`);
@@ -158,18 +178,31 @@ class SeenApp {
             this.render();
         } catch (err) {
             this.showError(err.message);
+        } finally {
+            this.loading = false;
         }
     }
 
+    hasActiveFilter() {
+        return Object.values(this.filters).some(v => v && v.length > 0);
+    }
+
+    onFilterChange(field, value) {
+        this.filters[field] = value;
+        this.renderedCount = PAGE_SIZE;
+        // Re-render body only; rebuilding the head would blur the focused filter input mid-typing.
+        const filtered = filterItems(this.items, this.filters);
+        const sorted = sortItems(filtered, this.sortColumn, this.sortDir);
+        this.renderBody(sorted.slice(0, this.renderedCount));
+    }
+
     render() {
-        const sorted = sortItems(this.items, this.sortColumn, this.sortDir);
-        const totalPages = pageCount(sorted.length);
-        if (this.page > totalPages) this.page = totalPages;
-        const pageItems = getPage(sorted, this.page);
+        const filtered = filterItems(this.items, this.filters);
+        const sorted = sortItems(filtered, this.sortColumn, this.sortDir);
+        const visible = sorted.slice(0, this.renderedCount);
 
         this.renderHead();
-        this.renderBody(pageItems);
-        this.renderPagination(sorted.length, totalPages);
+        this.renderBody(visible);
         this.tableArea.style.display = '';
         this.loadingEl.style.display = 'none';
         this.errorEl.style.display = 'none';
@@ -195,7 +228,8 @@ class SeenApp {
     renderHead() {
         const cols = this.columns();
         this.tableHead.innerHTML = '';
-        const tr = document.createElement('tr');
+
+        const sortRow = document.createElement('tr');
         cols.forEach(col => {
             let th;
             if (col.type === 'sort') {
@@ -219,24 +253,45 @@ class SeenApp {
             } else {
                 th = document.createElement('th');
             }
-            tr.appendChild(th);
+            sortRow.appendChild(th);
         });
-        this.tableHead.appendChild(tr);
+        this.tableHead.appendChild(sortRow);
+
+        const filterRow = document.createElement('tr');
+        filterRow.className = 'filter-row';
+        cols.forEach(col => {
+            const th = document.createElement('th');
+            const isFilterable = col.type === 'sort' || (col.type === 'notes' && this.showNotes);
+            if (isFilterable) {
+                const filterKey = col.type === 'notes' ? 'notes' : col.key;
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.className = 'filter-input';
+                input.placeholder = 'Filter…';
+                input.value = this.filters[filterKey] || '';
+                input.addEventListener('input', e => this.onFilterChange(filterKey, e.target.value));
+                th.appendChild(input);
+            }
+            filterRow.appendChild(th);
+        });
+        this.tableHead.appendChild(filterRow);
     }
 
-    renderBody(pageItems) {
+    renderBody(items) {
         this.tableBody.innerHTML = '';
-        if (pageItems.length === 0) {
+        if (items.length === 0) {
             const tr = document.createElement('tr');
             const td = document.createElement('td');
             td.colSpan = this.columns().length;
             td.className = 'empty-state';
-            td.textContent = 'No entries yet — click + Add to get started.';
+            td.textContent = this.hasActiveFilter()
+                ? 'No matches for current filter.'
+                : 'No entries yet — click + Add to get started.';
             tr.appendChild(td);
             this.tableBody.appendChild(tr);
             return;
         }
-        pageItems.forEach(item => this.tableBody.appendChild(this.renderRow(item)));
+        items.forEach(item => this.tableBody.appendChild(this.renderRow(item)));
     }
 
     renderRow(item) {
@@ -354,7 +409,7 @@ class SeenApp {
             if (!r.ok) throw new Error(`Create failed: ${r.status}`);
             const { item } = await r.json();
             this.items = [item, ...this.items];
-            this.page = 1;
+            this.renderedCount = PAGE_SIZE;
             this.render();
         } catch (err) {
             this.showError(err.message);
@@ -381,53 +436,8 @@ class SeenApp {
             this.sortColumn = column;
             this.sortDir = 'asc';
         }
+        this.renderedCount = PAGE_SIZE;
         this.render();
-    }
-
-    renderPagination(total, totalPages) {
-        this.paginationEl.innerHTML = '';
-        if (totalPages <= 1) return;
-
-        const info = document.createElement('span');
-        info.className = 'page-info';
-        const start = (this.page - 1) * PAGE_SIZE + 1;
-        const end = Math.min(this.page * PAGE_SIZE, total);
-        info.textContent = `${start}–${end} of ${total}`;
-        this.paginationEl.appendChild(info);
-
-        const prev = document.createElement('button');
-        prev.className = 'page-btn';
-        prev.textContent = '‹';
-        prev.disabled = this.page === 1;
-        prev.addEventListener('click', () => { this.page--; this.render(); });
-        this.paginationEl.appendChild(prev);
-
-        const pageSet = new Set(
-            [1, totalPages, this.page - 1, this.page, this.page + 1]
-                .filter(p => p >= 1 && p <= totalPages)
-        );
-        let lastRendered = null;
-        for (const p of [...pageSet].sort((a, b) => a - b)) {
-            if (lastRendered !== null && p > lastRendered + 1) {
-                const ellipsis = document.createElement('span');
-                ellipsis.className = 'page-ellipsis';
-                ellipsis.textContent = '…';
-                this.paginationEl.appendChild(ellipsis);
-            }
-            const btn = document.createElement('button');
-            btn.className = `page-btn${p === this.page ? ' active' : ''}`;
-            btn.textContent = p;
-            btn.addEventListener('click', () => { this.page = p; this.render(); });
-            this.paginationEl.appendChild(btn);
-            lastRendered = p;
-        }
-
-        const next = document.createElement('button');
-        next.className = 'page-btn';
-        next.textContent = '›';
-        next.disabled = this.page === totalPages;
-        next.addEventListener('click', () => { this.page++; this.render(); });
-        this.paginationEl.appendChild(next);
     }
 
     columns() {

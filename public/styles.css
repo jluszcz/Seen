@@ -20,18 +20,6 @@ body {
     box-shadow: 0 0 40px rgba(0, 0, 0, 0.08);
 }
 
-header {
-    padding: 28px 32px 20px;
-    border-bottom: 1px solid #e8e8e8;
-}
-
-header h1 {
-    font-size: 1.8rem;
-    font-weight: 600;
-    color: #1a1a1a;
-    letter-spacing: -0.02em;
-}
-
 /* Tabs */
 .tabs {
     display: flex;
@@ -281,50 +269,39 @@ tr:hover .delete-btn {
     color: #1a1a1a;
 }
 
-/* Pagination */
-.pagination {
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    gap: 6px;
-    margin-top: 16px;
-    font-size: 0.85rem;
-    color: #666;
+/* Filter row */
+.filter-row th {
+    padding: 5px 16px 8px;
+    border-bottom: 1px solid #e8e8e8;
 }
 
-.page-btn {
-    padding: 5px 11px;
+.filter-input {
+    width: 100%;
+    padding: 4px 8px;
     border: 1px solid #e0e0e0;
-    background: white;
-    border-radius: 5px;
-    cursor: pointer;
-    font-size: 0.85rem;
-    transition: all 0.15s;
-}
-
-.page-btn:hover:not(:disabled) {
-    border-color: #1a1a1a;
+    border-radius: 4px;
+    font-family: inherit;
+    font-size: 0.8rem;
+    font-weight: normal;
+    text-transform: none;
+    letter-spacing: normal;
     color: #1a1a1a;
+    background: white;
+    outline: none;
 }
 
-.page-btn:disabled {
-    opacity: 0.4;
-    cursor: default;
+.filter-input:focus {
+    border-color: #4a90e2;
+    box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.15);
 }
 
-.page-btn.active {
-    background: #1a1a1a;
-    color: white;
-    border-color: #1a1a1a;
+.filter-input::placeholder {
+    color: #ccc;
 }
 
-.page-info {
-    padding: 0 4px;
-}
-
-.page-ellipsis {
-    padding: 0 4px;
-    color: #999;
+/* Infinite scroll sentinel */
+.scroll-sentinel {
+    height: 1px;
 }
 
 .empty-state {
@@ -334,10 +311,6 @@ tr:hover .delete-btn {
 }
 
 @media (max-width: 640px) {
-    header {
-        padding: 20px 16px 14px;
-    }
-
     .tabs {
         padding: 0 16px;
         overflow-x: auto;
