@@ -2,14 +2,15 @@ import { hasNotes, sortItems, getPage, pageCount, formatDate, PAGE_SIZE } from '
 
 class SeenApp {
     constructor() {
-        this.category = 'friends';
+        this.categories = [];
+        this.category = null;
         this.items = [];
         this.sortColumn = 'date';
         this.sortDir = 'desc';
         this.page = 1;
         this.showNotes = false;
 
-        this.tabEls = document.querySelectorAll('.tab');
+        this.tabsEl = document.getElementById('tabs');
         this.loadingEl = document.getElementById('loading');
         this.errorEl = document.getElementById('error');
         this.tableArea = document.getElementById('table-area');
@@ -18,10 +19,65 @@ class SeenApp {
         this.paginationEl = document.getElementById('pagination');
         this.addBtn = document.getElementById('add-btn');
 
-        this.tabEls.forEach(tab => tab.addEventListener('click', () => this.switchCategory(tab.dataset.category)));
         this.addBtn.addEventListener('click', () => this.addRow());
 
-        this.load();
+        this.init();
+    }
+
+    async init() {
+        try {
+            const r = await fetch('/api/categories');
+            if (!r.ok) throw new Error(`Failed to load categories: ${r.status}`);
+            const { categories } = await r.json();
+            this.categories = categories;
+        } catch (err) {
+            this.showError(err.message);
+            return;
+        }
+
+        this.category = this.categories.length > 0 ? this.categories[0].name : null;
+        this.renderTabs();
+
+        if (this.category) {
+            await this.load();
+        } else {
+            this.loadingEl.style.display = 'none';
+        }
+    }
+
+    renderTabs() {
+        this.tabsEl.innerHTML = '';
+
+        this.categories.forEach(cat => {
+            const btn = document.createElement('button');
+            btn.className = 'tab' + (cat.name === this.category ? ' active' : '');
+            btn.dataset.category = cat.name;
+
+            const labelSpan = document.createElement('span');
+            labelSpan.className = 'tab-label';
+            labelSpan.textContent = cat.label;
+
+            const delSpan = document.createElement('span');
+            delSpan.className = 'tab-delete';
+            delSpan.textContent = '×';
+            delSpan.title = 'Delete category';
+            delSpan.addEventListener('click', e => {
+                e.stopPropagation();
+                this.deleteCategory(cat.id, cat.name, cat.label);
+            });
+
+            btn.appendChild(labelSpan);
+            btn.appendChild(delSpan);
+            btn.addEventListener('click', () => this.switchCategory(cat.name));
+            this.tabsEl.appendChild(btn);
+        });
+
+        const addBtn = document.createElement('button');
+        addBtn.className = 'tab-add-btn';
+        addBtn.textContent = '+';
+        addBtn.title = 'Add category';
+        addBtn.addEventListener('click', () => this.addCategory());
+        this.tabsEl.appendChild(addBtn);
     }
 
     async switchCategory(category) {
@@ -31,8 +87,64 @@ class SeenApp {
         this.sortDir = 'desc';
         this.page = 1;
         this.showNotes = false;
-        this.tabEls.forEach(t => t.classList.toggle('active', t.dataset.category === category));
+        this.renderTabs();
         await this.load();
+    }
+
+    async addCategory() {
+        const label = prompt('New category name:');
+        if (!label || !label.trim()) return;
+        const id = crypto.randomUUID();
+        try {
+            const r = await fetch('/api/categories', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id, label: label.trim() }),
+            });
+            if (!r.ok) {
+                let msg = `Create failed: ${r.status}`;
+                try { msg = (await r.json()).error || msg; } catch {}
+                throw new Error(msg);
+            }
+            const { category } = await r.json();
+            this.categories.push(category);
+            this.category = category.name;
+            this.items = [];
+            this.page = 1;
+            this.showNotes = false;
+            this.renderTabs();
+            this.render();
+        } catch (err) {
+            this.showError(err.message);
+        }
+    }
+
+    async deleteCategory(catId, catName, catLabel) {
+        if (!confirm(`Delete category "${catLabel}"?\n\nThis will fail if any items exist in it.`)) return;
+        try {
+            const r = await fetch(`/api/categories/${catId}`, { method: 'DELETE' });
+            if (!r.ok) {
+                let msg = `Delete failed: ${r.status}`;
+                try { msg = (await r.json()).error || msg; } catch {}
+                throw new Error(msg);
+            }
+            this.categories = this.categories.filter(c => c.id !== catId);
+            if (this.category === catName) {
+                this.category = this.categories[0]?.name ?? null;
+            }
+            this.items = [];
+            this.page = 1;
+            this.showNotes = false;
+            this.renderTabs();
+            if (this.category) {
+                await this.load();
+            } else {
+                this.loadingEl.style.display = 'none';
+                this.tableArea.style.display = 'none';
+            }
+        } catch (err) {
+            this.showError(err.message);
+        }
     }
 
     async load() {

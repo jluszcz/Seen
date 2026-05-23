@@ -98,6 +98,11 @@ Single `items` table:
 - Inline editing: click a cell → input appears; Enter/blur saves; Escape cancels
 - Pagination: 25 rows/page, client-side
 
+## Configuration Notes
+
+### D1 Database ID in wrangler.toml
+The `database_id` in `wrangler.toml` is committed intentionally. A D1 database ID is not a secret — it is a routing identifier, not a credential. Access to the database still requires valid Cloudflare authentication. This is consistent with how Cloudflare documents D1 configuration.
+
 ## Cost
 Designed to be free for personal use:
 - Cloudflare Workers: free tier (100,000 req/day)

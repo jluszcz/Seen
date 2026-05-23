@@ -10,5 +10,5 @@ binding = "ASSETS"
 [[d1_databases]]
 binding = "DB"
 database_name = "seen"
-database_id = "${D1_DATABASE_ID}"
+database_id = "5b6bbc3e-9cf5-4ac1-a54b-cfacc22232b6"
 migrations_dir = "migrations"
