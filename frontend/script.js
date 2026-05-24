@@ -1,7 +1,16 @@
 import { h, render } from 'preact';
 import { useState, useEffect, useMemo, useRef, useCallback } from 'preact/hooks';
 import htm from 'htm';
-import { hasNotes, sortItems, filterItems, formatDate, PAGE_SIZE } from './utils.js';
+import {
+    hasNotes,
+    sortItems,
+    filterItems,
+    formatDate,
+    computeSelectAllState,
+    toggleAllVisible,
+    buildBatchUpdates,
+    PAGE_SIZE,
+} from './utils.js';
 
 const html = htm.bind(h);
 
@@ -63,7 +72,66 @@ function FilterTh({ filterKey, filters, onChange }) {
     `;
 }
 
-function EditableCell({ item, field, value, inputType, autoEdit, onAutoEditConsumed, onSave }) {
+function SelectAllCheckbox({ state, onChange }) {
+    const ref = useRef(null);
+    useEffect(() => {
+        if (!ref.current) return;
+        ref.current.checked = state === 'all';
+        ref.current.indeterminate = state === 'some';
+    }, [state]);
+    return html`<input type="checkbox" ref=${ref} onChange=${onChange} />`;
+}
+
+function BatchPanel({ selectedCount, batchDate, batchNotes, batchClearNotes, applying,
+                      onDateChange, onNotesChange, onClearNotesChange, onApply, onCancel }) {
+    const canApply = !applying && selectedCount > 0 && (batchDate || batchNotes || batchClearNotes);
+    // Use explicit htmlFor/id pairs (not wrapping <label>) so the label-input
+    // association survives iOS Safari swallowing label clicks on date inputs.
+    return html`
+        <div class="batch-panel">
+            <span class="batch-count">${selectedCount} selected</span>
+            <div class="batch-field">
+                <label for="batch-date" class="batch-label">Date</label>
+                <input
+                    id="batch-date"
+                    type="date"
+                    class="batch-input"
+                    value=${batchDate}
+                    onInput=${e => onDateChange(e.target.value)}
+                />
+            </div>
+            <div class="batch-field">
+                <label for="batch-notes" class="batch-label">Notes</label>
+                <input
+                    id="batch-notes"
+                    type="text"
+                    class="batch-input batch-notes-input"
+                    placeholder=${batchClearNotes ? '(will be cleared)' : 'Notes…'}
+                    value=${batchClearNotes ? '' : batchNotes}
+                    disabled=${batchClearNotes}
+                    onInput=${e => onNotesChange(e.target.value)}
+                />
+            </div>
+            <label class="batch-clear" for="batch-clear-notes">
+                <input
+                    id="batch-clear-notes"
+                    type="checkbox"
+                    checked=${batchClearNotes}
+                    onChange=${e => onClearNotesChange(e.target.checked)}
+                />
+                <span>Clear notes</span>
+            </label>
+            <div class="batch-actions">
+                <button class="batch-apply-btn" disabled=${!canApply} onClick=${onApply}>
+                    ${applying ? 'Applying…' : 'Apply'}
+                </button>
+                <button class="batch-cancel-btn" disabled=${applying} onClick=${onCancel}>Cancel</button>
+            </div>
+        </div>
+    `;
+}
+
+function EditableCell({ item, field, value, inputType, autoEdit, onAutoEditConsumed, onSave, batchMode }) {
     const [editing, setEditing] = useState(!!autoEdit);
     const inputRef = useRef(null);
     const cancelledRef = useRef(false);
@@ -121,23 +189,39 @@ function EditableCell({ item, field, value, inputType, autoEdit, onAutoEditConsu
     const display = field === 'date' ? (value ? formatDate(value) : '')
         : value || (field === 'notes' ? '—' : '');
     const cls = !value ? 'cell-placeholder' : '';
+    // In batch mode the row's click target is the selection checkbox; clicking
+    // a cell must not enter inline edit, which would race with batch apply.
+    const onCellClick = batchMode ? undefined : () => setEditing(true);
     return html`
-        <td class="editable" data-field=${field} onClick=${() => setEditing(true)}>
+        <td class=${'editable' + (batchMode ? ' batch-locked' : '')} data-field=${field} onClick=${onCellClick}>
             <span class=${cls}>${display}</span>
         </td>
     `;
 }
 
-function Row({ item, showNotes, autoEdit, onAutoEditConsumed, onSave, onDelete }) {
+function Row({ item, showNotes, autoEdit, onAutoEditConsumed, onSave, onDelete,
+               batchMode, selected, onToggleSelect }) {
     return html`
         <tr>
+            ${batchMode ? html`
+                <td class="batch-check">
+                    <input type="checkbox" checked=${selected} onChange=${() => onToggleSelect(item.id)} />
+                </td>
+            ` : null}
             <${EditableCell}
                 item=${item} field="description" value=${item.description} inputType="input"
                 autoEdit=${autoEdit} onAutoEditConsumed=${onAutoEditConsumed} onSave=${onSave}
+                batchMode=${batchMode}
             />
-            <${EditableCell} item=${item} field="date" value=${item.date} inputType="date" onSave=${onSave} />
+            <${EditableCell}
+                item=${item} field="date" value=${item.date} inputType="date" onSave=${onSave}
+                batchMode=${batchMode}
+            />
             ${showNotes
-                ? html`<${EditableCell} item=${item} field="notes" value=${item.notes} inputType="textarea" onSave=${onSave} />`
+                ? html`<${EditableCell}
+                    item=${item} field="notes" value=${item.notes} inputType="textarea" onSave=${onSave}
+                    batchMode=${batchMode}
+                />`
                 : html`<td></td>`}
             <td>
                 <button class="delete-btn" title="Delete" onClick=${() => onDelete(item.id)}>×</button>
@@ -146,14 +230,22 @@ function Row({ item, showNotes, autoEdit, onAutoEditConsumed, onSave, onDelete }
     `;
 }
 
-const TABLE_COL_COUNT = 4;
+// Description, Date, Notes, delete-button — fixed across all rows.
+const STATIC_COL_COUNT = 4;
 
 function ItemsTable({ items, sortColumn, sortDir, filters, showNotes, hasActiveFilter, autoEditId,
-                     onToggleSort, onFilterChange, onShowNotes, onAutoEditConsumed, onSave, onDelete }) {
+                     onToggleSort, onFilterChange, onShowNotes, onAutoEditConsumed, onSave, onDelete,
+                     batchMode, selectedIds, onToggleSelect, onToggleSelectAll, selectAllState }) {
+    const colCount = STATIC_COL_COUNT + (batchMode ? 1 : 0);
     return html`
         <table id="items-table">
             <thead>
                 <tr>
+                    ${batchMode ? html`
+                        <th class="batch-check">
+                            <${SelectAllCheckbox} state=${selectAllState} onChange=${onToggleSelectAll} />
+                        </th>
+                    ` : null}
                     <${SortTh} label="Description" sortKey="description" sortColumn=${sortColumn} sortDir=${sortDir} onToggle=${onToggleSort} />
                     <${SortTh} label="Date" sortKey="date" sortColumn=${sortColumn} sortDir=${sortDir} onToggle=${onToggleSort} />
                     ${showNotes
@@ -162,6 +254,7 @@ function ItemsTable({ items, sortColumn, sortDir, filters, showNotes, hasActiveF
                     <th></th>
                 </tr>
                 <tr class="filter-row">
+                    ${batchMode ? html`<th class="batch-check"></th>` : null}
                     <${FilterTh} filterKey="description" filters=${filters} onChange=${onFilterChange} />
                     <${FilterTh} filterKey="date" filters=${filters} onChange=${onFilterChange} />
                     <${FilterTh} filterKey=${showNotes ? 'notes' : null} filters=${filters} onChange=${onFilterChange} />
@@ -171,7 +264,7 @@ function ItemsTable({ items, sortColumn, sortDir, filters, showNotes, hasActiveF
             <tbody>
                 ${items.length === 0
                     ? html`
-                        <tr><td colspan=${TABLE_COL_COUNT} class="empty-state">
+                        <tr><td colspan=${colCount} class="empty-state">
                             ${hasActiveFilter ? 'No matches for current filter.' : 'No entries yet — click + Add to get started.'}
                         </td></tr>`
                     : items.map(item => html`<${Row}
@@ -179,6 +272,9 @@ function ItemsTable({ items, sortColumn, sortDir, filters, showNotes, hasActiveF
                         autoEdit=${autoEditId === item.id}
                         onAutoEditConsumed=${onAutoEditConsumed}
                         onSave=${onSave} onDelete=${onDelete}
+                        batchMode=${batchMode}
+                        selected=${selectedIds.has(item.id)}
+                        onToggleSelect=${onToggleSelect}
                     />`)}
             </tbody>
         </table>
@@ -198,6 +294,12 @@ function App() {
     const [loadingCategories, setLoadingCategories] = useState(true);
     const [loadingItems, setLoadingItems] = useState(true);
     const [error, setError] = useState(null);
+    const [batchMode, setBatchMode] = useState(false);
+    const [selectedIds, setSelectedIds] = useState(new Set());
+    const [batchDate, setBatchDate] = useState('');
+    const [batchNotes, setBatchNotes] = useState('');
+    const [batchClearNotes, setBatchClearNotes] = useState(false);
+    const [applyingBatch, setApplyingBatch] = useState(false);
     const clearAutoEditId = useCallback(() => setAutoEditId(null), []);
 
     const loading = loadingCategories || loadingItems;
@@ -241,6 +343,15 @@ function App() {
     const visible = useMemo(() => sorted.slice(0, renderedCount), [sorted, renderedCount]);
     const hasActiveFilter = Object.values(filters).some(v => v && v.length > 0);
 
+    // Select-all reflects the post-filter set, not the currently-rendered page.
+    // Selections of items outside `sorted` (e.g., filtered out after being
+    // selected) are preserved internally but ignored by this state.
+    const sortedIds = useMemo(() => sorted.map(i => i.id), [sorted]);
+    const selectAllState = useMemo(
+        () => computeSelectAllState(selectedIds, sortedIds),
+        [selectedIds, sortedIds],
+    );
+
     useEffect(() => {
         const sentinel = sentinelRef.current;
         if (!sentinel) return;
@@ -252,8 +363,18 @@ function App() {
         return () => observer.disconnect();
     }, [sorted.length]);
 
+    const enterBatchMode = useCallback(() => setBatchMode(true), []);
+    const exitBatchMode = useCallback(() => {
+        setBatchMode(false);
+        setSelectedIds(new Set());
+        setBatchDate('');
+        setBatchNotes('');
+        setBatchClearNotes(false);
+    }, []);
+
     const switchCategory = name => {
         if (name === category) return;
+        exitBatchMode();
         setCategory(name);
         setSortColumn('date');
         setSortDir('desc');
@@ -362,6 +483,73 @@ function App() {
         setRenderedCount(PAGE_SIZE);
     };
 
+    const toggleSelectItem = useCallback((id) => {
+        setSelectedIds(prev => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
+            return next;
+        });
+    }, []);
+
+    const toggleSelectAll = useCallback(() => {
+        setSelectedIds(prev => toggleAllVisible(prev, sortedIds));
+    }, [sortedIds]);
+
+    const applyBatch = useCallback(async () => {
+        if (applyingBatch) return;
+        if (batchDate && !/^\d{4}-\d{2}-\d{2}$/.test(batchDate)) {
+            setError('Date must be YYYY-MM-DD');
+            return;
+        }
+        const updates = buildBatchUpdates({
+            date: batchDate,
+            notes: batchNotes,
+            clearNotes: batchClearNotes,
+        });
+        if (!Object.keys(updates).length || selectedIds.size === 0) return;
+
+        const ids = [...selectedIds];
+        setApplyingBatch(true);
+        let settled;
+        try {
+            settled = await Promise.allSettled(
+                ids.map(id => api(`/api/items/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(updates),
+                }).then(r => r.item))
+            );
+        } finally {
+            setApplyingBatch(false);
+        }
+
+        const succeeded = [];
+        const failedIds = [];
+        settled.forEach((r, i) => {
+            if (r.status === 'fulfilled') succeeded.push(r.value);
+            else failedIds.push(ids[i]);
+        });
+
+        if (succeeded.length > 0) {
+            setItems(cur => {
+                const map = Object.fromEntries(succeeded.map(i => [i.id, i]));
+                const next = cur.map(i => map[i.id] ?? i);
+                setShowNotes(hasNotes(next));
+                return next;
+            });
+        }
+
+        if (failedIds.length === 0) {
+            setError(null);
+            exitBatchMode();
+        } else {
+            // Keep only the failed IDs selected so the user can retry or inspect.
+            setSelectedIds(new Set(failedIds));
+            setError(`Updated ${succeeded.length} of ${ids.length}; ${failedIds.length} failed.`);
+        }
+    }, [applyingBatch, batchDate, batchNotes, batchClearNotes, selectedIds, exitBatchMode]);
+
     return html`
         <div class="container">
             <${Tabs}
@@ -378,7 +566,25 @@ function App() {
                     <div id="table-area">
                         <div class="table-toolbar">
                             <button class="add-btn" onClick=${addRow}>+ Add</button>
+                            <button
+                                class=${'batch-toggle-btn' + (batchMode ? ' active' : '')}
+                                onClick=${batchMode ? exitBatchMode : enterBatchMode}
+                            >Batch Edit</button>
                         </div>
+                        ${batchMode ? html`
+                            <${BatchPanel}
+                                selectedCount=${selectedIds.size}
+                                batchDate=${batchDate}
+                                batchNotes=${batchNotes}
+                                batchClearNotes=${batchClearNotes}
+                                applying=${applyingBatch}
+                                onDateChange=${setBatchDate}
+                                onNotesChange=${setBatchNotes}
+                                onClearNotesChange=${setBatchClearNotes}
+                                onApply=${applyBatch}
+                                onCancel=${exitBatchMode}
+                            />
+                        ` : null}
                         <div class="table-wrapper">
                             <${ItemsTable}
                                 items=${visible}
@@ -394,6 +600,11 @@ function App() {
                                 onAutoEditConsumed=${clearAutoEditId}
                                 onSave=${saveField}
                                 onDelete=${deleteRow}
+                                batchMode=${batchMode}
+                                selectedIds=${selectedIds}
+                                onToggleSelect=${toggleSelectItem}
+                                onToggleSelectAll=${toggleSelectAll}
+                                selectAllState=${selectAllState}
                             />
                         </div>
                         <div ref=${sentinelRef} class="scroll-sentinel"></div>
