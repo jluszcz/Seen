@@ -1,1 +1,499 @@
-*{box-sizing:border-box;margin:0;padding:0}body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;line-height:1.5;background:#f5f5f5;min-height:100vh}.container{max-width:960px;margin:0 auto;background:#fff;min-height:100vh;box-shadow:0 0 40px rgba(0,0,0,.08)}.tabs{display:flex;border-bottom:1px solid #e8e8e8;padding:0 32px;gap:4px}.tab{padding:12px 20px;border:0;background:0 0;font-size:.9rem;font-weight:500;color:#666;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:color .15s,border-color .15s}.tab.active,.tab:hover,body{color:#1a1a1a}.tab.active{border-bottom-color:#1a1a1a}.tab-delete{margin-left:6px;font-size:.85em;opacity:0;transition:opacity .15s;pointer-events:none}.tab:hover .tab-delete{opacity:.45;pointer-events:auto}.tab-delete:hover{opacity:1!important;color:#c0392b}.tab-add-btn{padding:12px 14px;border:0;background:0 0;font-size:1rem;font-weight:400;color:#bbb;cursor:pointer;margin-bottom:-1px;transition:color .15s;align-self:center}.tab-add-btn:hover,th.sortable:hover{color:#1a1a1a}.app{padding:28px 32px}.loading{color:#888;font-size:.95rem;padding:40px 0;text-align:center}.error,table{font-size:.9rem}.error{color:#c0392b;background:#fdf0ef;border:1px solid #f5c6c2;border-radius:6px;padding:12px 16px}.table-toolbar{display:flex;justify-content:flex-end;align-items:center;gap:8px;margin-bottom:14px}.add-btn{padding:8px 16px;background:#1a1a1a;color:#fff;border:0;border-radius:6px;font-size:.85rem;font-weight:500;cursor:pointer;transition:background .15s}.add-btn:hover{background:#333}.table-wrapper{overflow-x:auto;border:1px solid #e8e8e8;border-radius:8px}table{width:100%;border-collapse:collapse}thead{background:#f9f9f9}td,th{padding:11px 16px}th{text-align:left;font-weight:600;font-size:.8rem;text-transform:uppercase;letter-spacing:.04em;color:#666;border-bottom:1px solid #e8e8e8;white-space:nowrap;user-select:none}th.sortable{cursor:pointer}th .sort-indicator{margin-left:5px;opacity:.4;font-size:.75rem}th.sort-asc .sort-indicator,th.sort-desc .sort-indicator{opacity:1}td{border-bottom:1px solid #f0f0f0;vertical-align:top}tr:last-child td{border-bottom:none}tr:hover td{background:#fafafa}td.editable:hover,tr.new-row td{background:#f0f7ff}td.editable{cursor:text;position:relative}td.editable.batch-locked{cursor:default}td.editable.batch-locked:hover{background:inherit}td input.cell-input,td textarea.cell-input{width:100%;border:0;outline:2px solid #4a90e2;border-radius:4px;padding:2px 6px;font-family:inherit;font-size:inherit;background:#fff;resize:vertical;min-height:28px}td input[type=date].cell-input{padding:2px 4px}.cell-placeholder{color:#bbb;font-style:italic}.delete-btn,.show-notes-btn{background:0 0;cursor:pointer;border-radius:4px}.delete-btn{border:0;color:#ccc;font-size:1rem;padding:2px 6px;line-height:1;transition:color .15s,background .15s;visibility:hidden}tr:hover .delete-btn{visibility:visible}.delete-btn:hover{color:#c0392b;background:#fdf0ef}.show-notes-btn{border:1px solid #ddd;color:#888;font-size:.75rem;padding:3px 10px;transition:all .15s}.show-notes-btn:hover{border-color:#1a1a1a;color:#1a1a1a}.filter-row th{padding:5px 16px 8px;border-bottom:1px solid #e8e8e8}.filter-input{width:100%;padding:4px 8px;border:1px solid #e0e0e0;border-radius:4px;font-family:inherit;font-size:.8rem;font-weight:400;text-transform:none;letter-spacing:normal;color:#1a1a1a;background:#fff;outline:0}.filter-input:focus{border-color:#4a90e2;box-shadow:0 0 0 2px rgba(74,144,226,.15)}.filter-input::placeholder{color:#ccc}.batch-toggle-btn{padding:8px 16px;background:#fff;color:#1a1a1a;border:1px solid #ddd;border-radius:6px;font-size:.85rem;font-weight:500;cursor:pointer;transition:all .15s}.batch-toggle-btn:hover{border-color:#999}.batch-toggle-btn.active{background:#1a1a1a;color:#fff;border-color:#1a1a1a}.batch-panel{display:flex;align-items:center;gap:12px;padding:10px 14px;background:#f0f7ff;border:1px solid #c8dff5;border-radius:8px;margin-bottom:14px;flex-wrap:wrap}.batch-count{font-size:.85rem;color:#555;font-weight:500;font-variant-numeric:tabular-nums}.batch-field{display:flex;align-items:center;gap:6px}.batch-label{font-size:.75rem;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:#666;white-space:nowrap}.batch-input{padding:5px 8px;border:1px solid #ccc;border-radius:4px;font-family:inherit;font-size:.85rem;background:#fff;outline:0}.batch-input:focus{border-color:#4a90e2;box-shadow:0 0 0 2px rgba(74,144,226,.15)}.batch-notes-input{width:220px}.batch-notes-input:disabled{background:#f4f4f4;color:#999;cursor:not-allowed}.batch-clear{display:flex;align-items:center;gap:6px;font-size:.8rem;color:#555;cursor:pointer;user-select:none}.batch-actions{display:flex;gap:8px;margin-left:auto}.batch-apply-btn{padding:6px 16px;background:#1a1a1a;color:#fff;border:0;border-radius:6px;font-size:.85rem;font-weight:500;cursor:pointer;transition:background .15s}.batch-apply-btn:hover:not(:disabled){background:#333}.batch-apply-btn:disabled{opacity:.35;cursor:default}.batch-cancel-btn{padding:6px 14px;background:0 0;color:#555;border:1px solid #ccc;border-radius:6px;font-size:.85rem;font-weight:500;cursor:pointer;transition:all .15s}.batch-cancel-btn:hover{border-color:#999;color:#1a1a1a}td.batch-check,th.batch-check{width:36px;padding:11px 8px;text-align:center}td.batch-check{vertical-align:middle}.scroll-sentinel{height:1px}.empty-state{text-align:center;color:#aaa;padding:40px 16px}@media (max-width:640px){.tabs{padding:0 16px;overflow-x:auto}.tab{padding:10px 14px;white-space:nowrap}.app{padding:20px 16px}}
+* { box-sizing: border-box; margin: 0; padding: 0 }
+
+/*
+ * Theme cascade — four blocks work together:
+ *   1. :root          — light tokens (default, no OS/manual signal)
+ *   2. @media dark    — dark tokens when OS prefers dark AND no data-theme override
+ *   3. [data-theme=light] — forces light tokens when user manually picks light
+ *                          (needed to override @media dark when OS is dark but user chose light)
+ *   4. [data-theme=dark]  — forces dark tokens when user manually picks dark
+ *
+ * Do not collapse #1 and #3 or #2 and #4: the @media block is only active when
+ * data-theme is absent, so all four blocks are needed for correct override logic.
+ */
+
+:root {
+  color-scheme: light;
+  --bg: #f5f5f5;
+  --surface: #fff;
+  --surface-subtle: #f9f9f9;
+  --surface-hover: #fafafa;
+  --surface-accent: #f0f7ff;
+  --surface-disabled: #f4f4f4;
+  --text: #1a1a1a;
+  --text-subtle: #666;
+  --text-muted: #888;
+  --text-faint: #bbb;
+  --text-disabled: #999;
+  --border: #e8e8e8;
+  --border-subtle: #f0f0f0;
+  --border-medium: #e0e0e0;
+  --border-strong: #ddd;
+  --border-accent: #c8dff5;
+  --shadow: rgba(0,0,0,.08);
+  --blue: #4a90e2;
+  --blue-glow: rgba(74,144,226,.15);
+  --red: #c0392b;
+  --red-bg: #fdf0ef;
+  --red-border: #f5c6c2;
+  --btn-bg: #1a1a1a;
+  --btn-bg-hover: #333;
+  --btn-text: #fff;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --bg: #111;
+    --surface: #1c1c1e;
+    --surface-subtle: #252525;
+    --surface-hover: #242424;
+    --surface-accent: #1a2535;
+    --surface-disabled: #2a2a2a;
+    --text: #e8e8e8;
+    --text-subtle: #999;
+    --text-muted: #7a7a7a;
+    --text-faint: #5a5a5a;
+    --text-disabled: #5a5a5a;
+    --border: #333;
+    --border-subtle: #2a2a2a;
+    --border-medium: #3a3a3a;
+    --border-strong: #444;
+    --border-accent: #2a4a6a;
+    --shadow: rgba(0,0,0,.4);
+    --blue: #5a9fe8;
+    --blue-glow: rgba(74,144,226,.2);
+    --red: #e05c4a;
+    --red-bg: #2a1515;
+    --red-border: #5a2525;
+    --btn-bg: #e8e8e8;
+    --btn-bg-hover: #d4d4d4;
+    --btn-text: #1a1a1a;
+  }
+}
+
+html[data-theme="light"] {
+  color-scheme: light;
+  --bg: #f5f5f5;
+  --surface: #fff;
+  --surface-subtle: #f9f9f9;
+  --surface-hover: #fafafa;
+  --surface-accent: #f0f7ff;
+  --surface-disabled: #f4f4f4;
+  --text: #1a1a1a;
+  --text-subtle: #666;
+  --text-muted: #888;
+  --text-faint: #bbb;
+  --text-disabled: #999;
+  --border: #e8e8e8;
+  --border-subtle: #f0f0f0;
+  --border-medium: #e0e0e0;
+  --border-strong: #ddd;
+  --border-accent: #c8dff5;
+  --shadow: rgba(0,0,0,.08);
+  --blue: #4a90e2;
+  --blue-glow: rgba(74,144,226,.15);
+  --red: #c0392b;
+  --red-bg: #fdf0ef;
+  --red-border: #f5c6c2;
+  --btn-bg: #1a1a1a;
+  --btn-bg-hover: #333;
+  --btn-text: #fff;
+}
+
+html[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #111;
+  --surface: #1c1c1e;
+  --surface-subtle: #252525;
+  --surface-hover: #242424;
+  --surface-accent: #1a2535;
+  --surface-disabled: #2a2a2a;
+  --text: #e8e8e8;
+  --text-subtle: #999;
+  --text-muted: #7a7a7a;
+  --text-faint: #5a5a5a;
+  --text-disabled: #5a5a5a;
+  --border: #333;
+  --border-subtle: #2a2a2a;
+  --border-medium: #3a3a3a;
+  --border-strong: #444;
+  --border-accent: #2a4a6a;
+  --shadow: rgba(0,0,0,.4);
+  --blue: #5a9fe8;
+  --blue-glow: rgba(74,144,226,.2);
+  --red: #e05c4a;
+  --red-bg: #2a1515;
+  --red-border: #5a2525;
+  --btn-bg: #e8e8e8;
+  --btn-bg-hover: #d4d4d4;
+  --btn-text: #1a1a1a;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  line-height: 1.5;
+  background: var(--bg);
+  min-height: 100vh;
+  color: var(--text);
+}
+
+.container {
+  max-width: 960px;
+  margin: 0 auto;
+  background: var(--surface);
+  min-height: 100vh;
+  box-shadow: 0 0 40px var(--shadow);
+}
+
+.tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+  padding: 0 32px;
+  gap: 4px;
+}
+
+.tab {
+  padding: 12px 20px;
+  border: 0;
+  background: 0 0;
+  font-size: .9rem;
+  font-weight: 500;
+  color: var(--text-subtle);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: color .15s, border-color .15s;
+}
+
+.tab.active, .tab:hover { color: var(--text) }
+
+.tab.active { border-bottom-color: var(--text) }
+
+.tab-delete {
+  margin-left: 6px;
+  font-size: .85em;
+  opacity: 0;
+  transition: opacity .15s;
+  pointer-events: none;
+}
+
+.tab:hover .tab-delete { opacity: .45; pointer-events: auto }
+
+.tab-delete:hover { opacity: 1 !important; color: var(--red) }
+
+.tab-add-btn {
+  padding: 12px 14px;
+  border: 0;
+  background: 0 0;
+  font-size: 1rem;
+  font-weight: 400;
+  color: var(--text-faint);
+  cursor: pointer;
+  margin-bottom: -1px;
+  transition: color .15s;
+  align-self: center;
+}
+
+.tab-add-btn:hover { color: var(--text) }
+
+.theme-btn {
+  margin-left: auto;
+  padding: 6px 8px;
+  border: 0;
+  background: 0 0;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-radius: 4px;
+  transition: color .15s, background .15s;
+  align-self: center;
+  display: flex;
+  align-items: center;
+}
+
+.theme-btn:hover { color: var(--text); background: var(--surface-hover) }
+
+.app { padding: 28px 32px }
+
+.loading {
+  color: var(--text-muted);
+  font-size: .95rem;
+  padding: 40px 0;
+  text-align: center;
+}
+
+.error {
+  font-size: .9rem;
+  color: var(--red);
+  background: var(--red-bg);
+  border: 1px solid var(--red-border);
+  border-radius: 6px;
+  padding: 12px 16px;
+}
+
+.table-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.add-btn {
+  padding: 8px 16px;
+  background: var(--btn-bg);
+  color: var(--btn-text);
+  border: 0;
+  border-radius: 6px;
+  font-size: .85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background .15s;
+}
+
+.add-btn:hover { background: var(--btn-bg-hover) }
+
+.table-wrapper {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: .9rem;
+}
+
+thead { background: var(--surface-subtle) }
+
+td, th { padding: 11px 16px }
+
+th {
+  text-align: left;
+  font-weight: 600;
+  font-size: .8rem;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: var(--text-subtle);
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+  user-select: none;
+}
+
+th.sortable { cursor: pointer }
+
+th.sortable:hover { color: var(--text) }
+
+th .sort-indicator { margin-left: 5px; opacity: .4; font-size: .75rem }
+
+th.sort-asc .sort-indicator, th.sort-desc .sort-indicator { opacity: 1 }
+
+td {
+  border-bottom: 1px solid var(--border-subtle);
+  vertical-align: top;
+}
+
+tr:last-child td { border-bottom: none }
+
+tr:hover td { background: var(--surface-hover) }
+
+td.editable:hover, tr.new-row td { background: var(--surface-accent) }
+
+td.editable { cursor: text; position: relative }
+
+td.editable.batch-locked { cursor: default }
+
+td.editable.batch-locked:hover { background: inherit }
+
+td input.cell-input, td textarea.cell-input {
+  width: 100%;
+  border: 0;
+  outline: 2px solid var(--blue);
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-family: inherit;
+  font-size: inherit;
+  background: var(--surface);
+  color: var(--text);
+  resize: vertical;
+  min-height: 28px;
+}
+
+td input[type=date].cell-input { padding: 2px 4px }
+
+.cell-placeholder { color: var(--text-faint); font-style: italic }
+
+.delete-btn, .show-notes-btn { background: 0 0; cursor: pointer; border-radius: 4px }
+
+.delete-btn {
+  border: 0;
+  color: var(--text-faint);
+  font-size: 1rem;
+  padding: 2px 6px;
+  line-height: 1;
+  transition: color .15s, background .15s;
+  visibility: hidden;
+}
+
+tr:hover .delete-btn { visibility: visible }
+
+.delete-btn:hover { color: var(--red); background: var(--red-bg) }
+
+.show-notes-btn {
+  border: 1px solid var(--border-strong);
+  color: var(--text-muted);
+  font-size: .75rem;
+  padding: 3px 10px;
+  transition: all .15s;
+}
+
+.show-notes-btn:hover { border-color: var(--text); color: var(--text) }
+
+.filter-row th { padding: 5px 16px 8px; border-bottom: 1px solid var(--border) }
+
+.filter-input {
+  width: 100%;
+  padding: 4px 8px;
+  border: 1px solid var(--border-medium);
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: .8rem;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: normal;
+  color: var(--text);
+  background: var(--surface);
+  outline: 0;
+}
+
+.filter-input:focus { border-color: var(--blue); box-shadow: 0 0 0 2px var(--blue-glow) }
+
+.filter-input::placeholder { color: var(--text-faint) }
+
+.batch-toggle-btn {
+  padding: 8px 16px;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  font-size: .85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all .15s;
+}
+
+.batch-toggle-btn:hover { border-color: var(--text-subtle) }
+
+.batch-toggle-btn.active {
+  background: var(--btn-bg);
+  color: var(--btn-text);
+  border-color: var(--btn-bg);
+}
+
+.batch-panel {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  background: var(--surface-accent);
+  border: 1px solid var(--border-accent);
+  border-radius: 8px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+
+.batch-count {
+  font-size: .85rem;
+  color: var(--text-subtle);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.batch-field { display: flex; align-items: center; gap: 6px }
+
+.batch-label {
+  font-size: .75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: var(--text-subtle);
+  white-space: nowrap;
+}
+
+.batch-input {
+  padding: 5px 8px;
+  border: 1px solid var(--text-faint);
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: .85rem;
+  background: var(--surface);
+  color: var(--text);
+  outline: 0;
+}
+
+.batch-input:focus { border-color: var(--blue); box-shadow: 0 0 0 2px var(--blue-glow) }
+
+.batch-notes-input { width: 220px }
+
+.batch-notes-input:disabled {
+  background: var(--surface-disabled);
+  color: var(--text-disabled);
+  cursor: not-allowed;
+}
+
+.batch-clear {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: .8rem;
+  color: var(--text-subtle);
+  cursor: pointer;
+  user-select: none;
+}
+
+.batch-actions { display: flex; gap: 8px; margin-left: auto }
+
+.batch-apply-btn {
+  padding: 6px 16px;
+  background: var(--btn-bg);
+  color: var(--btn-text);
+  border: 0;
+  border-radius: 6px;
+  font-size: .85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background .15s;
+}
+
+.batch-apply-btn:hover:not(:disabled) { background: var(--btn-bg-hover) }
+
+.batch-apply-btn:disabled { opacity: .35; cursor: default }
+
+.batch-cancel-btn {
+  padding: 6px 14px;
+  background: 0 0;
+  color: var(--text-subtle);
+  border: 1px solid var(--text-faint);
+  border-radius: 6px;
+  font-size: .85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all .15s;
+}
+
+.batch-cancel-btn:hover { border-color: var(--text-subtle); color: var(--text) }
+
+td.batch-check, th.batch-check { width: 36px; padding: 11px 8px; text-align: center }
+
+td.batch-check { vertical-align: middle }
+
+.scroll-sentinel { height: 1px }
+
+.empty-state { text-align: center; color: var(--text-faint); padding: 40px 16px }
+
+@media (max-width: 640px) {
+  .tabs { padding: 0 16px; overflow-x: auto }
+  .tab { padding: 10px 14px; white-space: nowrap }
+  .app { padding: 20px 16px }
+}
