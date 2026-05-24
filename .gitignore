@@ -8,3 +8,4 @@ node_modules/
 prod.sql
 public/script.js
 public/script.js.map
+public/styles.css
