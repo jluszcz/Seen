@@ -1,7 +1,10 @@
 import { build, context } from 'esbuild';
-import { copyFile, mkdir } from 'node:fs/promises';
+import { mkdir } from 'node:fs/promises';
+import { exec } from 'node:child_process';
+import { promisify } from 'node:util';
 import { argv } from 'node:process';
 
+const execAsync = promisify(exec);
 const watch = argv.includes('--watch');
 
 const options = {
@@ -23,4 +26,5 @@ if (watch) {
     console.log('esbuild watching frontend/');
 } else {
     await build(options);
+    await execAsync('csso frontend/styles.css --output public/styles.css');
 }
