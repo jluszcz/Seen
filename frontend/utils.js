@@ -37,3 +37,44 @@ export function filterItems(items, filters) {
         return true;
     });
 }
+
+// "Visible" = the post-filter, post-sort set of IDs. Select-all operates on the
+// filtered set (not the rendered page), so users can act on rows below the
+// infinite-scroll fold. Selections of IDs outside `visibleItemIds` are ignored
+// for the purposes of computing this state.
+export function computeSelectAllState(selectedIds, visibleItemIds) {
+    if (visibleItemIds.length === 0) return 'none';
+    let selectedCount = 0;
+    for (const id of visibleItemIds) {
+        if (selectedIds.has(id)) selectedCount++;
+    }
+    if (selectedCount === 0) return 'none';
+    if (selectedCount === visibleItemIds.length) return 'all';
+    return 'some';
+}
+
+// Toggle "select all" against the visible set. Selections of hidden (filtered-out)
+// items are preserved across the toggle so filtering doesn't silently destroy
+// prior selections.
+export function toggleAllVisible(selectedIds, visibleItemIds) {
+    const next = new Set(selectedIds);
+    const allSelected = visibleItemIds.length > 0 && visibleItemIds.every(id => next.has(id));
+    if (allSelected) {
+        for (const id of visibleItemIds) next.delete(id);
+    } else {
+        for (const id of visibleItemIds) next.add(id);
+    }
+    return next;
+}
+
+export function buildBatchUpdates({ date, notes, clearNotes }) {
+    const updates = {};
+    if (date) updates.date = date;
+    if (clearNotes) {
+        updates.notes = null;
+    } else {
+        const trimmed = (notes ?? '').trim();
+        if (trimmed) updates.notes = trimmed;
+    }
+    return updates;
+}

@@ -252,6 +252,21 @@ describe('POST /api/items', () => {
         expect(r.status).toBe(400);
     });
 
+    it('returns 400 when date is not YYYY-MM-DD', async () => {
+        const r = await req('POST', '/api/items', {
+            id: 'n4a', category: 'friends', description: 'Dave', date: '0026-01-01',
+        });
+        // 4-digit year regex still allows "0026", which is intentional —
+        // the goal here is to reject free-form garbage like "tomorrow" or "1/2/26".
+        expect(r.status).toBe(201);
+
+        const garbage = await req('POST', '/api/items', {
+            id: 'n4b', category: 'friends', description: 'Dave', date: '1/2/26',
+        });
+        expect(garbage.status).toBe(400);
+        expect((await garbage.json()).error).toMatch(/YYYY-MM-DD/);
+    });
+
     it('returns 400 for category not in categories table', async () => {
         const r = await req('POST', '/api/items', { id: 'n5', category: 'movies', description: 'X', date: '2026-01-01' });
         expect(r.status).toBe(400);
@@ -298,6 +313,42 @@ describe('PUT /api/items/:id', () => {
         const r = await req('PUT', '/api/items/upd1', {});
         expect(r.status).toBe(400);
         expect((await r.json()).error).toMatch(/at least one field/i);
+    });
+
+    it('returns 400 when date is not YYYY-MM-DD', async () => {
+        const r = await req('PUT', '/api/items/upd1', { date: 'tomorrow' });
+        expect(r.status).toBe(400);
+        expect((await r.json()).error).toMatch(/YYYY-MM-DD/);
+    });
+
+    // The batch-edit UI fans out PUT /api/items/:id calls with these payload
+    // shapes via buildBatchUpdates. Lock the contract so the client/server
+    // can't drift.
+    describe('batch-edit payload shapes', () => {
+        it('accepts { date } alone', async () => {
+            const r = await req('PUT', '/api/items/upd1', { date: '2026-06-15' });
+            expect(r.status).toBe(200);
+            const { item } = await r.json();
+            expect(item.date).toBe('2026-06-15');
+            expect(item.description).toBe('Mom');
+        });
+
+        it('accepts { date, notes } together', async () => {
+            const r = await req('PUT', '/api/items/upd1', { date: '2026-06-15', notes: 'Birthday' });
+            expect(r.status).toBe(200);
+            const { item } = await r.json();
+            expect(item.date).toBe('2026-06-15');
+            expect(item.notes).toBe('Birthday');
+        });
+
+        it('accepts { date, notes: null } together (clear-notes batch)', async () => {
+            await req('PUT', '/api/items/upd1', { notes: 'Some note' });
+            const r = await req('PUT', '/api/items/upd1', { date: '2026-06-15', notes: null });
+            expect(r.status).toBe(200);
+            const { item } = await r.json();
+            expect(item.date).toBe('2026-06-15');
+            expect(item.notes).toBeNull();
+        });
     });
 });
 

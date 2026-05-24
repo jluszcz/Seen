@@ -110,6 +110,8 @@ body {
 .table-toolbar {
     display: flex;
     justify-content: flex-end;
+    align-items: center;
+    gap: 8px;
     margin-bottom: 14px;
 }
 
@@ -206,6 +208,14 @@ td.editable:hover {
     background: #f0f7ff;
 }
 
+td.editable.batch-locked {
+    cursor: default;
+}
+
+td.editable.batch-locked:hover {
+    background: inherit;
+}
+
 td input.cell-input,
 td textarea.cell-input {
     width: 100%;
@@ -297,6 +307,153 @@ tr:hover .delete-btn {
 
 .filter-input::placeholder {
     color: #ccc;
+}
+
+/* Batch edit */
+.batch-toggle-btn {
+    padding: 8px 16px;
+    background: white;
+    color: #1a1a1a;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.batch-toggle-btn:hover {
+    border-color: #999;
+}
+
+.batch-toggle-btn.active {
+    background: #1a1a1a;
+    color: white;
+    border-color: #1a1a1a;
+}
+
+.batch-panel {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    background: #f0f7ff;
+    border: 1px solid #c8dff5;
+    border-radius: 8px;
+    margin-bottom: 14px;
+    flex-wrap: wrap;
+}
+
+.batch-count {
+    font-size: 0.85rem;
+    color: #555;
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+}
+
+.batch-field {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.batch-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #666;
+    white-space: nowrap;
+}
+
+.batch-input {
+    padding: 5px 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-family: inherit;
+    font-size: 0.85rem;
+    background: white;
+    outline: none;
+}
+
+.batch-input:focus {
+    border-color: #4a90e2;
+    box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.15);
+}
+
+.batch-notes-input {
+    width: 220px;
+}
+
+.batch-notes-input:disabled {
+    background: #f4f4f4;
+    color: #999;
+    cursor: not-allowed;
+}
+
+.batch-clear {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.8rem;
+    color: #555;
+    cursor: pointer;
+    user-select: none;
+}
+
+.batch-actions {
+    display: flex;
+    gap: 8px;
+    margin-left: auto;
+}
+
+.batch-apply-btn {
+    padding: 6px 16px;
+    background: #1a1a1a;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.batch-apply-btn:hover:not(:disabled) {
+    background: #333;
+}
+
+.batch-apply-btn:disabled {
+    opacity: 0.35;
+    cursor: default;
+}
+
+.batch-cancel-btn {
+    padding: 6px 14px;
+    background: none;
+    color: #555;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.batch-cancel-btn:hover {
+    border-color: #999;
+    color: #1a1a1a;
+}
+
+th.batch-check,
+td.batch-check {
+    width: 36px;
+    padding: 11px 8px;
+    text-align: center;
+}
+
+td.batch-check {
+    vertical-align: middle;
 }
 
 /* Infinite scroll sentinel */

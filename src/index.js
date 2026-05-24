@@ -17,17 +17,19 @@ const categoryCreate = z.object({
     label: z.string().min(1, { message: 'label is required' }),
 });
 
+const dateField = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, { message: 'date must be YYYY-MM-DD' });
+
 const itemCreate = z.object({
     id: z.string().min(1, { message: 'id is required' }),
     category: z.string().min(1, { message: 'category is required' }),
     description: z.string().min(1, { message: 'description is required' }),
-    date: z.string().min(1, { message: 'date is required' }),
+    date: dateField,
     notes: z.string().nullish(),
 });
 
 const itemUpdate = z.object({
     description: z.string().min(1, { message: 'description cannot be empty' }).optional(),
-    date: z.string().min(1, { message: 'date cannot be empty' }).optional(),
+    date: dateField.optional(),
     notes: z.string().nullish(),
 }).refine(
     b => 'description' in b || 'date' in b || 'notes' in b,
