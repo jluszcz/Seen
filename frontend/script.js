@@ -33,7 +33,6 @@ function useTheme() {
 
     useEffect(() => {
         document.documentElement.dataset.theme = theme;
-        localStorage.setItem('theme', theme);
     }, [theme]);
 
     useEffect(() => {
@@ -48,10 +47,13 @@ function useTheme() {
         return () => mq.removeEventListener('change', handler);
     }, []);
 
-    const toggle = useCallback(
-        () => setTheme(t => t === 'dark' ? 'light' : 'dark'),
-        [],
-    );
+    // Persist only on explicit toggle: a stored theme means "user chose this",
+    // which is what disables OS-preference following above.
+    const toggle = useCallback(() => {
+        const next = theme === 'dark' ? 'light' : 'dark';
+        localStorage.setItem('theme', next);
+        setTheme(next);
+    }, [theme]);
 
     return { theme, toggle };
 }
@@ -79,18 +81,17 @@ function Tabs({ categories, current, onSwitch, onAdd, onDelete, theme, onToggleT
     return html`
         <nav class="tabs">
             ${categories.map(cat => html`
-                <button
-                    key=${cat.id}
-                    class=${'tab' + (cat.name === current ? ' active' : '')}
-                    onClick=${() => onSwitch(cat.name)}
-                >
-                    <span class="tab-label">${cat.label}</span>
-                    <span
+                <div key=${cat.id} class=${'tab-wrap' + (cat.name === current ? ' active' : '')}>
+                    <button class="tab" onClick=${() => onSwitch(cat.name)}>
+                        ${cat.label}
+                    </button>
+                    <button
                         class="tab-delete"
                         title="Delete category"
-                        onClick=${e => { e.stopPropagation(); onDelete(cat); }}
-                    >×</span>
-                </button>
+                        aria-label=${`Delete category ${cat.label}`}
+                        onClick=${() => onDelete(cat)}
+                    >×</button>
+                </div>
             `)}
             <button class="tab-add-btn" title="Add category" onClick=${onAdd}>+</button>
             <button class="theme-btn" title=${title} onClick=${onToggleTheme}>
@@ -104,9 +105,12 @@ function SortTh({ label, sortKey, sortColumn, sortDir, onToggle, id }) {
     const active = sortColumn === sortKey;
     const cls = 'sortable' + (active ? (sortDir === 'asc' ? ' sort-asc' : ' sort-desc') : '');
     const indicator = active ? (sortDir === 'asc' ? '↑' : '↓') : '↕';
+    const ariaSort = active ? (sortDir === 'asc' ? 'ascending' : 'descending') : undefined;
     return html`
-        <th id=${id} class=${cls} onClick=${() => onToggle(sortKey)}>
-            ${label}<span class="sort-indicator">${indicator}</span>
+        <th id=${id} class=${cls} aria-sort=${ariaSort}>
+            <button class="th-sort-btn" onClick=${() => onToggle(sortKey)}>
+                ${label}<span class="sort-indicator">${indicator}</span>
+            </button>
         </th>
     `;
 }
@@ -342,7 +346,7 @@ function App() {
     const [sortColumn, setSortColumn] = useState('date');
     const [sortDir, setSortDir] = useState('desc');
     const [renderedCount, setRenderedCount] = useState(PAGE_SIZE);
-    const [showNotes, setShowNotes] = useState(false);
+    const [notesForced, setNotesForced] = useState(false);
     const [filters, setFilters] = useState({});
     const [autoEditId, setAutoEditId] = useState(null);
     const [loadingCategories, setLoadingCategories] = useState(true);
@@ -378,20 +382,28 @@ function App() {
 
     useEffect(() => {
         if (!category) return;
+        // Ignore responses that land after the user has switched away, so a
+        // slow fetch can't overwrite the current category's items.
+        let stale = false;
         setLoadingItems(true);
         (async () => {
             try {
                 const { items } = await api(`/api/items?category=${encodeURIComponent(category)}`);
+                if (stale) return;
                 setItems(items);
-                setShowNotes(hasNotes(items));
                 setError(null);
             } catch (err) {
-                setError(err.message);
+                if (!stale) setError(err.message);
             } finally {
-                setLoadingItems(false);
+                if (!stale) setLoadingItems(false);
             }
         })();
+        return () => { stale = true; };
     }, [category]);
+
+    // Derived: the column shows whenever any item has notes, or the user
+    // forced it open via "+ Notes" (reset on category switch).
+    const showNotes = notesForced || hasNotes(items);
 
     const filtered = useMemo(() => filterItems(items, filters), [items, filters]);
     const sorted = useMemo(() => sortItems(filtered, sortColumn, sortDir), [filtered, sortColumn, sortDir]);
@@ -407,6 +419,9 @@ function App() {
         [selectedIds, sortedIds],
     );
 
+    // renderedCount is a dependency so the observer is recreated after each
+    // page renders; observe() then re-fires the callback if the sentinel is
+    // still visible (tall viewports), instead of waiting for a scroll event.
     useEffect(() => {
         const sentinel = sentinelRef.current;
         if (!sentinel) return;
@@ -416,7 +431,7 @@ function App() {
         }, { rootMargin: '200px' });
         observer.observe(sentinel);
         return () => observer.disconnect();
-    }, [sorted.length]);
+    }, [sorted.length, renderedCount]);
 
     const enterBatchMode = useCallback(() => setBatchMode(true), []);
     const exitBatchMode = useCallback(() => {
@@ -434,7 +449,7 @@ function App() {
         setSortColumn('date');
         setSortDir('desc');
         setRenderedCount(PAGE_SIZE);
-        setShowNotes(false);
+        setNotesForced(false);
         setFilters({});
     };
 
@@ -451,7 +466,7 @@ function App() {
             setCategory(created.name);
             setItems([]);
             setRenderedCount(PAGE_SIZE);
-            setShowNotes(false);
+            setNotesForced(false);
             setFilters({});
         } catch (err) {
             setError(err.message);
@@ -467,7 +482,7 @@ function App() {
             if (category === cat.name) setCategory(remaining[0]?.name ?? null);
             setItems([]);
             setRenderedCount(PAGE_SIZE);
-            setShowNotes(false);
+            setNotesForced(false);
             setFilters({});
         } catch (err) {
             setError(err.message);
@@ -482,8 +497,6 @@ function App() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ id: crypto.randomUUID(), category, description: 'New entry', date: today }),
             });
-            // Don't recompute showNotes: a new row has no notes, and if the user
-            // forced the column open via "+ Notes" we shouldn't collapse it back.
             setItems(cur => [item, ...cur]);
             setRenderedCount(PAGE_SIZE);
             setAutoEditId(item.id);
@@ -499,11 +512,7 @@ function App() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ [field]: value }),
             });
-            setItems(cur => {
-                const next = cur.map(i => i.id === id ? item : i);
-                setShowNotes(hasNotes(next));
-                return next;
-            });
+            setItems(cur => cur.map(i => i.id === id ? item : i));
         } catch (err) {
             setError(err.message);
         }
@@ -513,11 +522,7 @@ function App() {
         if (!confirm('Delete this entry?')) return;
         try {
             await api(`/api/items/${id}`, { method: 'DELETE' });
-            setItems(cur => {
-                const next = cur.filter(i => i.id !== id);
-                setShowNotes(hasNotes(next));
-                return next;
-            });
+            setItems(cur => cur.filter(i => i.id !== id));
         } catch (err) {
             setError(err.message);
         }
@@ -587,12 +592,8 @@ function App() {
         });
 
         if (succeeded.length > 0) {
-            setItems(cur => {
-                const map = Object.fromEntries(succeeded.map(i => [i.id, i]));
-                const next = cur.map(i => map[i.id] ?? i);
-                setShowNotes(hasNotes(next));
-                return next;
-            });
+            const map = Object.fromEntries(succeeded.map(i => [i.id, i]));
+            setItems(cur => cur.map(i => map[i.id] ?? i));
         }
 
         if (failedIds.length === 0) {
@@ -653,7 +654,7 @@ function App() {
                                 autoEditId=${autoEditId}
                                 onToggleSort=${toggleSort}
                                 onFilterChange=${onFilterChange}
-                                onShowNotes=${() => setShowNotes(true)}
+                                onShowNotes=${() => setNotesForced(true)}
                                 onAutoEditConsumed=${clearAutoEditId}
                                 onSave=${saveField}
                                 onDelete=${deleteRow}

@@ -153,34 +153,43 @@ body {
   gap: 4px;
 }
 
+.tab-wrap {
+  display: flex;
+  align-items: center;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: border-color .15s;
+}
+
+.tab-wrap.active { border-bottom-color: var(--text) }
+
 .tab {
-  padding: 12px 20px;
+  padding: 12px 6px 12px 20px;
   border: 0;
   background: 0 0;
   font-size: .9rem;
   font-weight: 500;
   color: var(--text-subtle);
   cursor: pointer;
-  border-bottom: 2px solid transparent;
-  margin-bottom: -1px;
-  transition: color .15s, border-color .15s;
+  transition: color .15s;
 }
 
-.tab.active, .tab:hover { color: var(--text) }
-
-.tab.active { border-bottom-color: var(--text) }
+.tab-wrap.active .tab, .tab-wrap:hover .tab { color: var(--text) }
 
 .tab-delete {
-  margin-left: 6px;
+  padding: 12px 14px 12px 2px;
+  border: 0;
+  background: 0 0;
   font-size: .85em;
+  color: var(--text-subtle);
+  cursor: pointer;
   opacity: 0;
   transition: opacity .15s;
-  pointer-events: none;
 }
 
-.tab:hover .tab-delete { opacity: .45; pointer-events: auto }
+.tab-wrap:hover .tab-delete, .tab-delete:focus-visible { opacity: .45 }
 
-.tab-delete:hover { opacity: 1 !important; color: var(--red) }
+.tab-delete:hover, .tab-delete:focus-visible { opacity: 1; color: var(--red) }
 
 .tab-add-btn {
   padding: 12px 14px;
@@ -281,7 +290,22 @@ th {
   user-select: none;
 }
 
-th.sortable { cursor: pointer }
+th.sortable { padding: 0 }
+
+.th-sort-btn {
+  display: block;
+  width: 100%;
+  padding: 11px 16px;
+  border: 0;
+  background: 0 0;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  text-transform: inherit;
+  letter-spacing: inherit;
+  white-space: nowrap;
+  cursor: pointer;
+}
 
 th.sortable:hover { color: var(--text) }
 
@@ -494,6 +518,7 @@ td.batch-check { vertical-align: middle }
 
 @media (max-width: 640px) {
   .tabs { padding: 0 16px; overflow-x: auto }
-  .tab { padding: 10px 14px; white-space: nowrap }
+  .tab { padding: 10px 4px 10px 14px; white-space: nowrap }
+  .tab-delete { padding: 10px 10px 10px 2px }
   .app { padding: 20px 16px }
 }
