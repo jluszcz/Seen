@@ -147,6 +147,13 @@ describe('POST /api/categories', () => {
     it('returns 409 when category name already exists', async () => {
         const r = await req('POST', '/api/categories', { id: 'cat-dup', label: 'Friends' });
         expect(r.status).toBe(409);
+        expect((await r.json()).error).toBe('A category with this name already exists');
+    });
+
+    it('returns 409 with an id-specific message when category id already exists', async () => {
+        const r = await req('POST', '/api/categories', { id: 'cat-friends', label: 'Fresh Label' });
+        expect(r.status).toBe(409);
+        expect((await r.json()).error).toBe('A category with this id already exists');
     });
 
     it('returns 400 for malformed JSON body', async () => {
@@ -230,6 +237,19 @@ describe('GET /api/items', () => {
         const { items } = await (await req('GET', '/api/items?category=concerts')).json();
         expect(items[0].description).toBe('New');
         expect(items[1].description).toBe('Old');
+    });
+
+    it('breaks date ties by created_at descending', async () => {
+        // Insert directly so created_at is deterministic; POSTs in quick
+        // succession can land on the same millisecond.
+        const insert = (id, description, createdAt) => env.DB.prepare(
+            "INSERT INTO items (id, category, description, date, notes, created_at, updated_at) VALUES (?, 'concerts', ?, '2026-05-01', NULL, ?, ?)"
+        ).bind(id, description, createdAt, createdAt).run();
+        await insert('tie1', 'Earlier', '2026-05-01T10:00:00.000Z');
+        await insert('tie2', 'Later', '2026-05-01T12:00:00.000Z');
+
+        const { items } = await (await req('GET', '/api/items?category=concerts')).json();
+        expect(items.map(i => i.description)).toEqual(['Later', 'Earlier']);
     });
 });
 

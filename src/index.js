@@ -64,7 +64,9 @@ app.post('/api/categories', zValidator('json', categoryCreate, onInvalid), async
         return c.json({ category }, 201);
     } catch (err) {
         if (String(err.message).includes('UNIQUE constraint failed')) {
-            return c.json({ error: 'A category with this name already exists' }, 409);
+            // Both id (PK) and name (UNIQUE) can collide; the SQLite message names the column.
+            const field = String(err.message).includes('categories.id') ? 'id' : 'name';
+            return c.json({ error: `A category with this ${field} already exists` }, 409);
         }
         throw err;
     }
@@ -130,6 +132,8 @@ app.put('/api/items/:id', zValidator('json', itemUpdate, onInvalid), async (c) =
     const item = await c.env.DB.prepare(
         'UPDATE items SET description = ?, date = ?, notes = ?, updated_at = ? WHERE id = ? RETURNING *'
     ).bind(description, date, notes || null, now, id).first();
+    // The row can vanish between the SELECT above and this UPDATE.
+    if (!item) return c.json({ error: 'Item not found' }, 404);
     return c.json({ item });
 });
 
