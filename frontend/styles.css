@@ -326,6 +326,8 @@ td.editable:hover, tr.new-row td { background: var(--surface-accent) }
 
 td.editable { cursor: text; position: relative }
 
+td.editable:focus-visible { outline: 2px solid var(--blue); outline-offset: -2px }
+
 td.editable.batch-locked { cursor: default }
 
 td.editable.batch-locked:hover { background: inherit }
@@ -356,13 +358,13 @@ td input[type=date].cell-input { padding: 2px 4px }
   font-size: 1rem;
   padding: 2px 6px;
   line-height: 1;
-  transition: color .15s, background .15s;
-  visibility: hidden;
+  transition: color .15s, background .15s, opacity .15s;
+  opacity: 0;
 }
 
-tr:hover .delete-btn { visibility: visible }
+tr:hover .delete-btn, .delete-btn:focus-visible { opacity: 1 }
 
-.delete-btn:hover { color: var(--red); background: var(--red-bg) }
+.delete-btn:hover, .delete-btn:focus-visible { color: var(--red); background: var(--red-bg) }
 
 .show-notes-btn {
   border: 1px solid var(--border-strong);

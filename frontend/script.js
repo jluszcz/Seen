@@ -192,7 +192,9 @@ function BatchPanel({ selectedCount, batchDate, batchNotes, batchClearNotes, app
 function EditableCell({ item, field, value, inputType, autoEdit, onAutoEditConsumed, onSave, batchMode }) {
     const [editing, setEditing] = useState(!!autoEdit);
     const inputRef = useRef(null);
+    const tdRef = useRef(null);
     const cancelledRef = useRef(false);
+    const exitViaKeyboardRef = useRef(false);
     const valueRef = useRef(value);
     valueRef.current = value;
 
@@ -206,6 +208,15 @@ function EditableCell({ item, field, value, inputType, autoEdit, onAutoEditConsu
     useEffect(() => {
         if (autoEdit) onAutoEditConsumed?.();
     }, [autoEdit, onAutoEditConsumed]);
+
+    // When an edit ends via Enter/Escape, return focus to the cell so keyboard
+    // users keep their place; mouse blurs leave focus where the user clicked.
+    useEffect(() => {
+        if (!editing && exitViaKeyboardRef.current) {
+            exitViaKeyboardRef.current = false;
+            tdRef.current?.focus();
+        }
+    }, [editing]);
 
     const commit = useCallback(async () => {
         if (cancelledRef.current) {
@@ -225,8 +236,8 @@ function EditableCell({ item, field, value, inputType, autoEdit, onAutoEditConsu
 
     if (editing) {
         const onKey = e => {
-            if (e.key === 'Enter' && inputType !== 'textarea') { e.preventDefault(); e.target.blur(); }
-            if (e.key === 'Escape') { cancelledRef.current = true; setEditing(false); }
+            if (e.key === 'Enter' && inputType !== 'textarea') { e.preventDefault(); exitViaKeyboardRef.current = true; e.target.blur(); }
+            if (e.key === 'Escape') { cancelledRef.current = true; exitViaKeyboardRef.current = true; setEditing(false); }
         };
         const common = {
             ref: inputRef,
@@ -250,8 +261,18 @@ function EditableCell({ item, field, value, inputType, autoEdit, onAutoEditConsu
     // In batch mode the row's click target is the selection checkbox; clicking
     // a cell must not enter inline edit, which would race with batch apply.
     const onCellClick = batchMode ? undefined : () => setEditing(true);
+    const onCellKeyDown = batchMode ? undefined : e => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setEditing(true); }
+    };
     return html`
-        <td class=${'editable' + (batchMode ? ' batch-locked' : '')} data-field=${field} onClick=${onCellClick}>
+        <td
+            ref=${tdRef}
+            class=${'editable' + (batchMode ? ' batch-locked' : '')}
+            data-field=${field}
+            tabindex=${batchMode ? undefined : 0}
+            onClick=${onCellClick}
+            onKeyDown=${onCellKeyDown}
+        >
             <span class=${cls}>${display}</span>
         </td>
     `;
@@ -282,7 +303,12 @@ function Row({ item, showNotes, autoEdit, onAutoEditConsumed, onSave, onDelete,
                 />`
                 : html`<td></td>`}
             <td>
-                <button class="delete-btn" title="Delete" onClick=${() => onDelete(item.id)}>×</button>
+                <button
+                    class="delete-btn"
+                    title="Delete"
+                    aria-label=${`Delete ${item.description}`}
+                    onClick=${() => onDelete(item.id)}
+                >×</button>
             </td>
         </tr>
     `;
