@@ -8,6 +8,7 @@
     "build": "node build.js",
     "dev": "concurrently -k -n bundle,worker -c cyan,magenta \"node build.js --watch\" \"wrangler dev\"",
     "deploy": "npm run build && wrangler deploy",
+    "lint": "eslint .",
     "test": "vitest run",
     "test:watch": "vitest"
   },
@@ -23,9 +24,11 @@
   "devDependencies": {
     "@cloudflare/vitest-pool-workers": "^0.16.19",
     "@cloudflare/workers-types": "^4.20260317.1",
+    "@eslint/js": "^9.0.0",
     "concurrently": "^10.0.3",
-    "csso-cli": "^4.0.2",
     "esbuild": "^0.28.1",
+    "eslint": "^9.0.0",
+    "globals": "^16.0.0",
     "vitest": "^4.1.9",
     "wrangler": "^4.75.0"
   },
