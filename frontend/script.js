@@ -82,7 +82,11 @@ function Tabs({ categories, current, onSwitch, onAdd, onDelete, theme, onToggleT
         <nav class="tabs">
             ${categories.map(cat => html`
                 <div key=${cat.id} class=${'tab-wrap' + (cat.name === current ? ' active' : '')}>
-                    <button class="tab" onClick=${() => onSwitch(cat.name)}>
+                    <button
+                        class="tab"
+                        aria-current=${cat.name === current ? 'true' : undefined}
+                        onClick=${() => onSwitch(cat.name)}
+                    >
                         ${cat.label}
                     </button>
                     <button
@@ -264,12 +268,16 @@ function EditableCell({ item, field, value, inputType, autoEdit, onAutoEditConsu
     const onCellKeyDown = batchMode ? undefined : e => {
         if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setEditing(true); }
     };
+    // role/aria-label make the cell discoverable as activatable by screen
+    // readers; the label repeats the value because aria-label replaces content.
     return html`
         <td
             ref=${tdRef}
             class=${'editable' + (batchMode ? ' batch-locked' : '')}
             data-field=${field}
             tabindex=${batchMode ? undefined : 0}
+            role=${batchMode ? undefined : 'button'}
+            aria-label=${batchMode ? undefined : `Edit ${field}${display ? `: ${display}` : ''}`}
             onClick=${onCellClick}
             onKeyDown=${onCellKeyDown}
         >
