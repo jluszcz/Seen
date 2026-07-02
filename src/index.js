@@ -14,7 +14,7 @@ const onInvalid = (result, c) => {
 
 const categoryCreate = z.object({
     id: z.string().min(1, { message: 'id is required' }),
-    label: z.string().min(1, { message: 'label is required' }),
+    label: z.string().trim().min(1, { message: 'label is required' }),
 });
 
 const dateField = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, { message: 'date must be YYYY-MM-DD' });
@@ -22,13 +22,13 @@ const dateField = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, { message: 'date must 
 const itemCreate = z.object({
     id: z.string().min(1, { message: 'id is required' }),
     category: z.string().min(1, { message: 'category is required' }),
-    description: z.string().min(1, { message: 'description is required' }),
+    description: z.string().trim().min(1, { message: 'description is required' }),
     date: dateField,
     notes: z.string().nullish(),
 });
 
 const itemUpdate = z.object({
-    description: z.string().min(1, { message: 'description cannot be empty' }).optional(),
+    description: z.string().trim().min(1, { message: 'description cannot be empty' }).optional(),
     date: dateField.optional(),
     notes: z.string().nullish(),
 }).refine(
@@ -52,21 +52,22 @@ app.get('/api/categories', async (c) => {
 
 app.post('/api/categories', zValidator('json', categoryCreate, onInvalid), async (c) => {
     const { id, label } = c.req.valid('json');
-    const name = label.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+    const name = label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
     if (!name) return c.json({ error: 'Label must contain at least one alphanumeric character' }, 400);
 
-    const existing = await c.env.DB.prepare('SELECT id FROM categories WHERE name = ?').bind(name).first();
-    if (existing) return c.json({ error: 'A category with this name already exists' }, 409);
-
-    const row = await c.env.DB.prepare('SELECT COALESCE(MAX(sort_order), 0) AS max_order FROM categories').first();
-    const sortOrder = row.max_order + 1;
-
-    await c.env.DB.prepare(
-        'INSERT INTO categories (id, name, label, sort_order) VALUES (?, ?, ?, ?)'
-    ).bind(id, name, label.trim(), sortOrder).run();
-
-    const category = await c.env.DB.prepare('SELECT * FROM categories WHERE id = ?').bind(id).first();
-    return c.json({ category }, 201);
+    try {
+        const category = await c.env.DB.prepare(
+            `INSERT INTO categories (id, name, label, sort_order)
+             VALUES (?, ?, ?, (SELECT COALESCE(MAX(sort_order), 0) + 1 FROM categories))
+             RETURNING *`
+        ).bind(id, name, label).first();
+        return c.json({ category }, 201);
+    } catch (err) {
+        if (String(err.message).includes('UNIQUE constraint failed')) {
+            return c.json({ error: 'A category with this name already exists' }, 409);
+        }
+        throw err;
+    }
 });
 
 app.delete('/api/categories/:id', async (c) => {
@@ -89,7 +90,7 @@ app.get('/api/items', async (c) => {
     if (!cat) return c.json({ error: `Unknown category: ${category}` }, 400);
 
     const { results } = await c.env.DB.prepare(
-        'SELECT * FROM items WHERE category = ? ORDER BY date DESC'
+        'SELECT * FROM items WHERE category = ? ORDER BY date DESC, created_at DESC'
     ).bind(category).all();
     return c.json({ items: results });
 });
@@ -101,12 +102,17 @@ app.post('/api/items', zValidator('json', itemCreate, onInvalid), async (c) => {
     if (!cat) return c.json({ error: `Unknown category: ${category}` }, 400);
 
     const now = new Date().toISOString();
-    await c.env.DB.prepare(
-        'INSERT INTO items (id, category, description, date, notes, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)'
-    ).bind(id, category, description.trim(), date, notes || null, now, now).run();
-
-    const item = await c.env.DB.prepare('SELECT * FROM items WHERE id = ?').bind(id).first();
-    return c.json({ item }, 201);
+    try {
+        const item = await c.env.DB.prepare(
+            'INSERT INTO items (id, category, description, date, notes, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING *'
+        ).bind(id, category, description, date, notes || null, now, now).first();
+        return c.json({ item }, 201);
+    } catch (err) {
+        if (String(err.message).includes('UNIQUE constraint failed')) {
+            return c.json({ error: 'An item with this id already exists' }, 409);
+        }
+        throw err;
+    }
 });
 
 app.put('/api/items/:id', zValidator('json', itemUpdate, onInvalid), async (c) => {
@@ -121,11 +127,9 @@ app.put('/api/items/:id', zValidator('json', itemUpdate, onInvalid), async (c) =
     const notes = 'notes' in body ? body.notes : existing.notes;
 
     const now = new Date().toISOString();
-    await c.env.DB.prepare(
-        'UPDATE items SET description = ?, date = ?, notes = ?, updated_at = ? WHERE id = ?'
-    ).bind(description.trim(), date, notes || null, now, id).run();
-
-    const item = await c.env.DB.prepare('SELECT * FROM items WHERE id = ?').bind(id).first();
+    const item = await c.env.DB.prepare(
+        'UPDATE items SET description = ?, date = ?, notes = ?, updated_at = ? WHERE id = ? RETURNING *'
+    ).bind(description, date, notes || null, now, id).first();
     return c.json({ item });
 });
 

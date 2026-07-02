@@ -126,6 +126,19 @@ describe('POST /api/categories', () => {
         expect(r.status).toBe(400);
     });
 
+    it('returns 400 when label is whitespace-only', async () => {
+        const r = await req('POST', '/api/categories', { id: 'cat-x', label: '   ' });
+        expect(r.status).toBe(400);
+    });
+
+    it('trims surrounding whitespace from label', async () => {
+        const r = await req('POST', '/api/categories', { id: 'cat-pad', label: '  Padded  ' });
+        expect(r.status).toBe(201);
+        const { category } = await r.json();
+        expect(category.label).toBe('Padded');
+        expect(category.name).toBe('padded');
+    });
+
     it('returns 400 when id is missing', async () => {
         const r = await req('POST', '/api/categories', { label: 'Oops' });
         expect(r.status).toBe(400);
@@ -247,6 +260,19 @@ describe('POST /api/items', () => {
         expect(r.status).toBe(400);
     });
 
+    it('returns 400 when description is whitespace-only', async () => {
+        const r = await req('POST', '/api/items', {
+            id: 'n3a', category: 'friends', description: '   ', date: '2026-01-01',
+        });
+        expect(r.status).toBe(400);
+    });
+
+    it('returns 409 when item id already exists', async () => {
+        await req('POST', '/api/items', { id: 'dup', category: 'friends', description: 'First', date: '2026-01-01' });
+        const r = await req('POST', '/api/items', { id: 'dup', category: 'friends', description: 'Second', date: '2026-01-02' });
+        expect(r.status).toBe(409);
+    });
+
     it('returns 400 when date is missing', async () => {
         const r = await req('POST', '/api/items', { id: 'n4', category: 'friends', description: 'Dave' });
         expect(r.status).toBe(400);
@@ -306,6 +332,11 @@ describe('PUT /api/items/:id', () => {
 
     it('returns 400 when description is cleared', async () => {
         const r = await req('PUT', '/api/items/upd1', { description: '' });
+        expect(r.status).toBe(400);
+    });
+
+    it('returns 400 when description is whitespace-only', async () => {
+        const r = await req('PUT', '/api/items/upd1', { description: '   ' });
         expect(r.status).toBe(400);
     });
 
