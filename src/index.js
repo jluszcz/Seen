@@ -36,6 +36,11 @@ const itemUpdate = z.object({
     { message: 'At least one field is required' },
 );
 
+// D1 doesn't expose structured SQLite error codes, so UNIQUE violations are
+// detected by message text. If the message format ever changes, these paths
+// degrade from 409 to 500 (the error is rethrown), not to silent corruption.
+const isUniqueViolation = (err) => String(err.message).includes('UNIQUE constraint failed');
+
 app.onError((err, c) => {
     if (err instanceof HTTPException && err.status === 400 && err.message === 'Malformed JSON in request body') {
         return c.json({ error: 'Invalid JSON body' }, 400);
@@ -63,7 +68,7 @@ app.post('/api/categories', zValidator('json', categoryCreate, onInvalid), async
         ).bind(id, name, label).first();
         return c.json({ category }, 201);
     } catch (err) {
-        if (String(err.message).includes('UNIQUE constraint failed')) {
+        if (isUniqueViolation(err)) {
             // Both id (PK) and name (UNIQUE) can collide; the SQLite message names the column.
             const field = String(err.message).includes('categories.id') ? 'id' : 'name';
             return c.json({ error: `A category with this ${field} already exists` }, 409);
@@ -74,14 +79,18 @@ app.post('/api/categories', zValidator('json', categoryCreate, onInvalid), async
 
 app.delete('/api/categories/:id', async (c) => {
     const id = c.req.param('id');
-    const existing = await c.env.DB.prepare('SELECT * FROM categories WHERE id = ?').bind(id).first();
+    // The has-items check lives inside the DELETE so an item created
+    // concurrently can't be orphaned by a check-then-delete race.
+    const deleted = await c.env.DB.prepare(
+        `DELETE FROM categories
+         WHERE id = ? AND NOT EXISTS (SELECT 1 FROM items WHERE category = categories.name)
+         RETURNING id`
+    ).bind(id).first();
+    if (deleted) return c.json({ success: true });
+
+    const existing = await c.env.DB.prepare('SELECT 1 FROM categories WHERE id = ?').bind(id).first();
     if (!existing) return c.json({ error: 'Category not found' }, 404);
-
-    const row = await c.env.DB.prepare('SELECT COUNT(*) AS count FROM items WHERE category = ?').bind(existing.name).first();
-    if (row.count > 0) return c.json({ error: 'Cannot delete a category that has items' }, 409);
-
-    await c.env.DB.prepare('DELETE FROM categories WHERE id = ?').bind(id).run();
-    return c.json({ success: true });
+    return c.json({ error: 'Cannot delete a category that has items' }, 409);
 });
 
 app.get('/api/items', async (c) => {
@@ -100,6 +109,8 @@ app.get('/api/items', async (c) => {
 app.post('/api/items', zValidator('json', itemCreate, onInvalid), async (c) => {
     const { id, category, description, date, notes } = c.req.valid('json');
 
+    // Not atomic with the INSERT below (no FK is enforced): the category can be
+    // deleted in between, orphaning this item. Accepted for a single-user app.
     const cat = await c.env.DB.prepare('SELECT id FROM categories WHERE name = ?').bind(category).first();
     if (!cat) return c.json({ error: `Unknown category: ${category}` }, 400);
 
@@ -110,7 +121,7 @@ app.post('/api/items', zValidator('json', itemCreate, onInvalid), async (c) => {
         ).bind(id, category, description, date, notes || null, now, now).first();
         return c.json({ item }, 201);
     } catch (err) {
-        if (String(err.message).includes('UNIQUE constraint failed')) {
+        if (isUniqueViolation(err)) {
             return c.json({ error: 'An item with this id already exists' }, 409);
         }
         throw err;
@@ -124,6 +135,10 @@ app.put('/api/items/:id', zValidator('json', itemUpdate, onInvalid), async (c) =
     const existing = await c.env.DB.prepare('SELECT * FROM items WHERE id = ?').bind(id).first();
     if (!existing) return c.json({ error: 'Item not found' }, 404);
 
+    // Read-merge-write: concurrent PUTs to the same item can interleave, and the
+    // later one overwrites with fields merged from a stale read. A single-statement
+    // COALESCE merge can't express "explicitly clear notes", so this is accepted
+    // for a single-user app.
     const description = 'description' in body ? body.description : existing.description;
     const date = 'date' in body ? body.date : existing.date;
     const notes = 'notes' in body ? body.notes : existing.notes;

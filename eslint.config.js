@@ -14,6 +14,10 @@ export default [
         languageOptions: { globals: globals.browser },
     },
     {
+        files: ['src/**/*.js'],
+        languageOptions: { globals: globals.serviceworker },
+    },
+    {
         files: ['build.js', 'eslint.config.js', 'vitest.config.mjs'],
         languageOptions: { globals: globals.node },
     },
