@@ -11,10 +11,10 @@ This file provides guidance to Claude Code when working with code in this reposi
 - `frontend/` — Preact + htm frontend source
   - `script.js` — `App` component + child components managing all state and rendering
   - `utils.js` — Pure helpers (`filterItems`, `sortItems`, `hasNotes`, `formatDate`, `PAGE_SIZE`); shared with tests
+  - `styles.css` — Minimal, neutral styling
 - `public/` — Served static assets
   - `index.html` — App shell that loads the bundled script
-  - `styles.css` — Minimal, neutral styling
-  - `script.js`, `script.js.map` — esbuild output (gitignored, produced by `npm run build`)
+  - `script.js`, `script.js.map`, `styles.css` — esbuild output (gitignored, produced by `npm run build`)
 - `src/` — Cloudflare Workers backend
   - `index.js` — Hono app + CRUD API for categories and items
 - `migrations/` — D1 SQL migrations (applied via wrangler)
@@ -37,14 +37,15 @@ This file provides guidance to Claude Code when working with code in this reposi
 
 ## Build & Bundling
 
-The frontend lives in `frontend/` and is bundled to `public/script.js` by `build.js` (esbuild). The bundle and its sourcemap are gitignored.
+The frontend lives in `frontend/` and is bundled to `public/` by `build.js` (esbuild handles both the JS bundle and CSS minification). All build output in `public/` except `index.html` is gitignored.
 
 - `npm run build` — one-shot production bundle (minified)
 - `npm run dev` — runs `node build.js --watch` and `wrangler dev` concurrently (sourcemaps on, no minify)
 - `npm run deploy` — builds, then `wrangler deploy`
+- `npm run lint` — ESLint (flat config in `eslint.config.js`)
 - `npm test` — runs Vitest only. Tests import from `frontend/utils.js` directly; they do not depend on the bundle.
 
-When editing the frontend, edit files under `frontend/`. Do not edit `public/script.js` — it is build output.
+When editing the frontend, edit files under `frontend/`. Do not edit `public/script.js` or `public/styles.css` — they are build output.
 
 ## Development Setup
 

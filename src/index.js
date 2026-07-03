@@ -14,7 +14,7 @@ const onInvalid = (result, c) => {
 
 const categoryCreate = z.object({
     id: z.string().min(1, { message: 'id is required' }),
-    label: z.string().min(1, { message: 'label is required' }),
+    label: z.string().trim().min(1, { message: 'label is required' }),
 });
 
 const dateField = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, { message: 'date must be YYYY-MM-DD' });
@@ -22,19 +22,24 @@ const dateField = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, { message: 'date must 
 const itemCreate = z.object({
     id: z.string().min(1, { message: 'id is required' }),
     category: z.string().min(1, { message: 'category is required' }),
-    description: z.string().min(1, { message: 'description is required' }),
+    description: z.string().trim().min(1, { message: 'description is required' }),
     date: dateField,
     notes: z.string().nullish(),
 });
 
 const itemUpdate = z.object({
-    description: z.string().min(1, { message: 'description cannot be empty' }).optional(),
+    description: z.string().trim().min(1, { message: 'description cannot be empty' }).optional(),
     date: dateField.optional(),
     notes: z.string().nullish(),
 }).refine(
     b => 'description' in b || 'date' in b || 'notes' in b,
     { message: 'At least one field is required' },
 );
+
+// D1 doesn't expose structured SQLite error codes, so UNIQUE violations are
+// detected by message text. If the message format ever changes, these paths
+// degrade from 409 to 500 (the error is rethrown), not to silent corruption.
+const isUniqueViolation = (err) => String(err.message).includes('UNIQUE constraint failed');
 
 app.onError((err, c) => {
     if (err instanceof HTTPException && err.status === 400 && err.message === 'Malformed JSON in request body') {
@@ -52,33 +57,40 @@ app.get('/api/categories', async (c) => {
 
 app.post('/api/categories', zValidator('json', categoryCreate, onInvalid), async (c) => {
     const { id, label } = c.req.valid('json');
-    const name = label.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+    const name = label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
     if (!name) return c.json({ error: 'Label must contain at least one alphanumeric character' }, 400);
 
-    const existing = await c.env.DB.prepare('SELECT id FROM categories WHERE name = ?').bind(name).first();
-    if (existing) return c.json({ error: 'A category with this name already exists' }, 409);
-
-    const row = await c.env.DB.prepare('SELECT COALESCE(MAX(sort_order), 0) AS max_order FROM categories').first();
-    const sortOrder = row.max_order + 1;
-
-    await c.env.DB.prepare(
-        'INSERT INTO categories (id, name, label, sort_order) VALUES (?, ?, ?, ?)'
-    ).bind(id, name, label.trim(), sortOrder).run();
-
-    const category = await c.env.DB.prepare('SELECT * FROM categories WHERE id = ?').bind(id).first();
-    return c.json({ category }, 201);
+    try {
+        const category = await c.env.DB.prepare(
+            `INSERT INTO categories (id, name, label, sort_order)
+             VALUES (?, ?, ?, (SELECT COALESCE(MAX(sort_order), 0) + 1 FROM categories))
+             RETURNING *`
+        ).bind(id, name, label).first();
+        return c.json({ category }, 201);
+    } catch (err) {
+        if (isUniqueViolation(err)) {
+            // Both id (PK) and name (UNIQUE) can collide; the SQLite message names the column.
+            const field = String(err.message).includes('categories.id') ? 'id' : 'name';
+            return c.json({ error: `A category with this ${field} already exists` }, 409);
+        }
+        throw err;
+    }
 });
 
 app.delete('/api/categories/:id', async (c) => {
     const id = c.req.param('id');
-    const existing = await c.env.DB.prepare('SELECT * FROM categories WHERE id = ?').bind(id).first();
+    // The has-items check lives inside the DELETE so an item created
+    // concurrently can't be orphaned by a check-then-delete race.
+    const deleted = await c.env.DB.prepare(
+        `DELETE FROM categories
+         WHERE id = ? AND NOT EXISTS (SELECT 1 FROM items WHERE category = categories.name)
+         RETURNING id`
+    ).bind(id).first();
+    if (deleted) return c.json({ success: true });
+
+    const existing = await c.env.DB.prepare('SELECT 1 FROM categories WHERE id = ?').bind(id).first();
     if (!existing) return c.json({ error: 'Category not found' }, 404);
-
-    const row = await c.env.DB.prepare('SELECT COUNT(*) AS count FROM items WHERE category = ?').bind(existing.name).first();
-    if (row.count > 0) return c.json({ error: 'Cannot delete a category that has items' }, 409);
-
-    await c.env.DB.prepare('DELETE FROM categories WHERE id = ?').bind(id).run();
-    return c.json({ success: true });
+    return c.json({ error: 'Cannot delete a category that has items' }, 409);
 });
 
 app.get('/api/items', async (c) => {
@@ -89,7 +101,7 @@ app.get('/api/items', async (c) => {
     if (!cat) return c.json({ error: `Unknown category: ${category}` }, 400);
 
     const { results } = await c.env.DB.prepare(
-        'SELECT * FROM items WHERE category = ? ORDER BY date DESC'
+        'SELECT * FROM items WHERE category = ? ORDER BY date DESC, created_at DESC'
     ).bind(category).all();
     return c.json({ items: results });
 });
@@ -97,16 +109,23 @@ app.get('/api/items', async (c) => {
 app.post('/api/items', zValidator('json', itemCreate, onInvalid), async (c) => {
     const { id, category, description, date, notes } = c.req.valid('json');
 
+    // Not atomic with the INSERT below (no FK is enforced): the category can be
+    // deleted in between, orphaning this item. Accepted for a single-user app.
     const cat = await c.env.DB.prepare('SELECT id FROM categories WHERE name = ?').bind(category).first();
     if (!cat) return c.json({ error: `Unknown category: ${category}` }, 400);
 
     const now = new Date().toISOString();
-    await c.env.DB.prepare(
-        'INSERT INTO items (id, category, description, date, notes, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)'
-    ).bind(id, category, description.trim(), date, notes || null, now, now).run();
-
-    const item = await c.env.DB.prepare('SELECT * FROM items WHERE id = ?').bind(id).first();
-    return c.json({ item }, 201);
+    try {
+        const item = await c.env.DB.prepare(
+            'INSERT INTO items (id, category, description, date, notes, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING *'
+        ).bind(id, category, description, date, notes || null, now, now).first();
+        return c.json({ item }, 201);
+    } catch (err) {
+        if (isUniqueViolation(err)) {
+            return c.json({ error: 'An item with this id already exists' }, 409);
+        }
+        throw err;
+    }
 });
 
 app.put('/api/items/:id', zValidator('json', itemUpdate, onInvalid), async (c) => {
@@ -116,16 +135,20 @@ app.put('/api/items/:id', zValidator('json', itemUpdate, onInvalid), async (c) =
     const existing = await c.env.DB.prepare('SELECT * FROM items WHERE id = ?').bind(id).first();
     if (!existing) return c.json({ error: 'Item not found' }, 404);
 
+    // Read-merge-write: concurrent PUTs to the same item can interleave, and the
+    // later one overwrites with fields merged from a stale read. A single-statement
+    // COALESCE merge can't express "explicitly clear notes", so this is accepted
+    // for a single-user app.
     const description = 'description' in body ? body.description : existing.description;
     const date = 'date' in body ? body.date : existing.date;
     const notes = 'notes' in body ? body.notes : existing.notes;
 
     const now = new Date().toISOString();
-    await c.env.DB.prepare(
-        'UPDATE items SET description = ?, date = ?, notes = ?, updated_at = ? WHERE id = ?'
-    ).bind(description.trim(), date, notes || null, now, id).run();
-
-    const item = await c.env.DB.prepare('SELECT * FROM items WHERE id = ?').bind(id).first();
+    const item = await c.env.DB.prepare(
+        'UPDATE items SET description = ?, date = ?, notes = ?, updated_at = ? WHERE id = ? RETURNING *'
+    ).bind(description, date, notes || null, now, id).first();
+    // The row can vanish between the SELECT above and this UPDATE.
+    if (!item) return c.json({ error: 'Item not found' }, 404);
     return c.json({ item });
 });
 
