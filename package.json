@@ -24,13 +24,13 @@
         "picomatch": "^4.0.4"
     },
     "devDependencies": {
-        "@cloudflare/vitest-pool-workers": "^0.16.19",
+        "@cloudflare/vitest-pool-workers": "^0.16.20",
         "@cloudflare/workers-types": "^4.20260317.1",
-        "@eslint/js": "^9.0.0",
+        "@eslint/js": "^10.0.1",
         "concurrently": "^10.0.3",
         "esbuild": "^0.28.1",
-        "eslint": "^9.0.0",
-        "globals": "^16.0.0",
+        "eslint": "^10.6.0",
+        "globals": "^17.7.0",
         "prettier": "3.9.4",
         "vitest": "^4.1.9",
         "wrangler": "^4.75.0"
@@ -39,7 +39,7 @@
         "@hono/zod-validator": "^0.8.0",
         "hono": "^4.12.27",
         "htm": "^3.1.1",
-        "preact": "^10.29.2",
+        "preact": "^10.29.3",
         "zod": "^4.4.3"
     }
 }
