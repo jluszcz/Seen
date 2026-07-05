@@ -7,7 +7,7 @@ const app = new Hono();
 
 const onInvalid = (result, c) => {
     if (!result.success) {
-        const message = result.error.issues.map(i => i.message).join('; ') || 'Invalid input';
+        const message = result.error.issues.map((i) => i.message).join('; ') || 'Invalid input';
         return c.json({ error: message }, 400);
     }
 };
@@ -27,14 +27,19 @@ const itemCreate = z.object({
     notes: z.string().nullish(),
 });
 
-const itemUpdate = z.object({
-    description: z.string().trim().min(1, { message: 'description cannot be empty' }).optional(),
-    date: dateField.optional(),
-    notes: z.string().nullish(),
-}).refine(
-    b => 'description' in b || 'date' in b || 'notes' in b,
-    { message: 'At least one field is required' },
-);
+const itemUpdate = z
+    .object({
+        description: z
+            .string()
+            .trim()
+            .min(1, { message: 'description cannot be empty' })
+            .optional(),
+        date: dateField.optional(),
+        notes: z.string().nullish(),
+    })
+    .refine((b) => 'description' in b || 'date' in b || 'notes' in b, {
+        message: 'At least one field is required',
+    });
 
 // D1 doesn't expose structured SQLite error codes, so UNIQUE violations are
 // detected by message text. If the message format ever changes, these paths
@@ -42,7 +47,11 @@ const itemUpdate = z.object({
 const isUniqueViolation = (err) => String(err.message).includes('UNIQUE constraint failed');
 
 app.onError((err, c) => {
-    if (err instanceof HTTPException && err.status === 400 && err.message === 'Malformed JSON in request body') {
+    if (
+        err instanceof HTTPException &&
+        err.status === 400 &&
+        err.message === 'Malformed JSON in request body'
+    ) {
         return c.json({ error: 'Invalid JSON body' }, 400);
     }
     throw err;
@@ -50,22 +59,28 @@ app.onError((err, c) => {
 
 app.get('/api/categories', async (c) => {
     const { results } = await c.env.DB.prepare(
-        'SELECT * FROM categories ORDER BY sort_order ASC, label ASC'
+        'SELECT * FROM categories ORDER BY sort_order ASC, label ASC',
     ).all();
     return c.json({ categories: results });
 });
 
 app.post('/api/categories', zValidator('json', categoryCreate, onInvalid), async (c) => {
     const { id, label } = c.req.valid('json');
-    const name = label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
-    if (!name) return c.json({ error: 'Label must contain at least one alphanumeric character' }, 400);
+    const name = label
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '');
+    if (!name)
+        return c.json({ error: 'Label must contain at least one alphanumeric character' }, 400);
 
     try {
         const category = await c.env.DB.prepare(
             `INSERT INTO categories (id, name, label, sort_order)
              VALUES (?, ?, ?, (SELECT COALESCE(MAX(sort_order), 0) + 1 FROM categories))
-             RETURNING *`
-        ).bind(id, name, label).first();
+             RETURNING *`,
+        )
+            .bind(id, name, label)
+            .first();
         return c.json({ category }, 201);
     } catch (err) {
         if (isUniqueViolation(err)) {
@@ -84,11 +99,15 @@ app.delete('/api/categories/:id', async (c) => {
     const deleted = await c.env.DB.prepare(
         `DELETE FROM categories
          WHERE id = ? AND NOT EXISTS (SELECT 1 FROM items WHERE category = categories.name)
-         RETURNING id`
-    ).bind(id).first();
+         RETURNING id`,
+    )
+        .bind(id)
+        .first();
     if (deleted) return c.json({ success: true });
 
-    const existing = await c.env.DB.prepare('SELECT 1 FROM categories WHERE id = ?').bind(id).first();
+    const existing = await c.env.DB.prepare('SELECT 1 FROM categories WHERE id = ?')
+        .bind(id)
+        .first();
     if (!existing) return c.json({ error: 'Category not found' }, 404);
     return c.json({ error: 'Cannot delete a category that has items' }, 409);
 });
@@ -97,12 +116,16 @@ app.get('/api/items', async (c) => {
     const category = c.req.query('category');
     if (!category) return c.json({ error: 'category query param is required' }, 400);
 
-    const cat = await c.env.DB.prepare('SELECT id FROM categories WHERE name = ?').bind(category).first();
+    const cat = await c.env.DB.prepare('SELECT id FROM categories WHERE name = ?')
+        .bind(category)
+        .first();
     if (!cat) return c.json({ error: `Unknown category: ${category}` }, 400);
 
     const { results } = await c.env.DB.prepare(
-        'SELECT * FROM items WHERE category = ? ORDER BY date DESC, created_at DESC'
-    ).bind(category).all();
+        'SELECT * FROM items WHERE category = ? ORDER BY date DESC, created_at DESC',
+    )
+        .bind(category)
+        .all();
     return c.json({ items: results });
 });
 
@@ -111,14 +134,18 @@ app.post('/api/items', zValidator('json', itemCreate, onInvalid), async (c) => {
 
     // Not atomic with the INSERT below (no FK is enforced): the category can be
     // deleted in between, orphaning this item. Accepted for a single-user app.
-    const cat = await c.env.DB.prepare('SELECT id FROM categories WHERE name = ?').bind(category).first();
+    const cat = await c.env.DB.prepare('SELECT id FROM categories WHERE name = ?')
+        .bind(category)
+        .first();
     if (!cat) return c.json({ error: `Unknown category: ${category}` }, 400);
 
     const now = new Date().toISOString();
     try {
         const item = await c.env.DB.prepare(
-            'INSERT INTO items (id, category, description, date, notes, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING *'
-        ).bind(id, category, description, date, notes || null, now, now).first();
+            'INSERT INTO items (id, category, description, date, notes, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING *',
+        )
+            .bind(id, category, description, date, notes || null, now, now)
+            .first();
         return c.json({ item }, 201);
     } catch (err) {
         if (isUniqueViolation(err)) {
@@ -145,8 +172,10 @@ app.put('/api/items/:id', zValidator('json', itemUpdate, onInvalid), async (c) =
 
     const now = new Date().toISOString();
     const item = await c.env.DB.prepare(
-        'UPDATE items SET description = ?, date = ?, notes = ?, updated_at = ? WHERE id = ? RETURNING *'
-    ).bind(description, date, notes || null, now, id).first();
+        'UPDATE items SET description = ?, date = ?, notes = ?, updated_at = ? WHERE id = ? RETURNING *',
+    )
+        .bind(description, date, notes || null, now, id)
+        .first();
     // The row can vanish between the SELECT above and this UPDATE.
     if (!item) return c.json({ error: 'Item not found' }, 404);
     return c.json({ item });

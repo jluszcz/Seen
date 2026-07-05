@@ -1,42 +1,45 @@
 {
-  "name": "seen",
-  "version": "1.0.0",
-  "description": "Track things you've seen across categories",
-  "main": "src/index.js",
-  "type": "module",
-  "scripts": {
-    "build": "node build.js",
-    "dev": "concurrently -k -n bundle,worker -c cyan,magenta \"node build.js --watch\" \"wrangler dev\"",
-    "deploy": "npm run build && wrangler deploy",
-    "lint": "eslint .",
-    "test": "vitest run",
-    "test:watch": "vitest"
-  },
-  "author": "Jacob Luszcz",
-  "license": "MIT",
-  "engines": {
-    "node": ">=20"
-  },
-  "overrides": {
-    "undici": "^7.24.6",
-    "picomatch": "^4.0.4"
-  },
-  "devDependencies": {
-    "@cloudflare/vitest-pool-workers": "^0.16.19",
-    "@cloudflare/workers-types": "^4.20260317.1",
-    "@eslint/js": "^9.0.0",
-    "concurrently": "^10.0.3",
-    "esbuild": "^0.28.1",
-    "eslint": "^9.0.0",
-    "globals": "^16.0.0",
-    "vitest": "^4.1.9",
-    "wrangler": "^4.75.0"
-  },
-  "dependencies": {
-    "@hono/zod-validator": "^0.8.0",
-    "hono": "^4.12.27",
-    "htm": "^3.1.1",
-    "preact": "^10.29.2",
-    "zod": "^4.4.3"
-  }
+    "name": "seen",
+    "version": "1.0.0",
+    "description": "Track things you've seen across categories",
+    "main": "src/index.js",
+    "type": "module",
+    "scripts": {
+        "build": "node build.js",
+        "dev": "concurrently -k -n bundle,worker -c cyan,magenta \"node build.js --watch\" \"wrangler dev\"",
+        "deploy": "npm run build && wrangler deploy",
+        "lint": "eslint .",
+        "format": "prettier --write .",
+        "format:check": "prettier --check .",
+        "test": "vitest run",
+        "test:watch": "vitest"
+    },
+    "author": "Jacob Luszcz",
+    "license": "MIT",
+    "engines": {
+        "node": ">=20"
+    },
+    "overrides": {
+        "undici": "^7.24.6",
+        "picomatch": "^4.0.4"
+    },
+    "devDependencies": {
+        "@cloudflare/vitest-pool-workers": "^0.16.19",
+        "@cloudflare/workers-types": "^4.20260317.1",
+        "@eslint/js": "^9.0.0",
+        "concurrently": "^10.0.3",
+        "esbuild": "^0.28.1",
+        "eslint": "^9.0.0",
+        "globals": "^16.0.0",
+        "prettier": "3.9.4",
+        "vitest": "^4.1.9",
+        "wrangler": "^4.75.0"
+    },
+    "dependencies": {
+        "@hono/zod-validator": "^0.8.0",
+        "hono": "^4.12.27",
+        "htm": "^3.1.1",
+        "preact": "^10.29.2",
+        "zod": "^4.4.3"
+    }
 }

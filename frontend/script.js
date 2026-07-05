@@ -18,7 +18,9 @@ async function api(path, options = {}) {
     const r = await fetch(path, options);
     if (!r.ok) {
         let msg = `${options.method || 'GET'} ${path} failed: ${r.status}`;
-        try { msg = (await r.json()).error || msg; } catch {}
+        try {
+            msg = (await r.json()).error || msg;
+        } catch {}
         throw new Error(msg);
     }
     return r.json();
@@ -37,7 +39,7 @@ function useTheme() {
 
     useEffect(() => {
         const mq = window.matchMedia('(prefers-color-scheme: dark)');
-        const handler = e => {
+        const handler = (e) => {
             // Manual override in localStorage takes priority; only follow OS if none set.
             const stored = localStorage.getItem('theme');
             if (stored === 'light' || stored === 'dark') return;
@@ -60,19 +62,39 @@ function useTheme() {
 
 // Lucide icons (MIT) — currentColor inherits button color from CSS
 const SunIcon = () => html`
-    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
-         fill="none" stroke="currentColor" stroke-width="2"
-         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <circle cx="12" cy="12" r="4"/>
-        <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>
+    <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        aria-hidden="true"
+    >
+        <circle cx="12" cy="12" r="4" />
+        <path
+            d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"
+        />
     </svg>
 `;
 
 const MoonIcon = () => html`
-    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
-         fill="none" stroke="currentColor" stroke-width="2"
-         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>
+    <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        aria-hidden="true"
+    >
+        <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" />
     </svg>
 `;
 
@@ -80,26 +102,33 @@ function Tabs({ categories, current, onSwitch, onAdd, onDelete, theme, onToggleT
     const title = theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode';
     return html`
         <nav class="tabs">
-            ${categories.map(cat => html`
-                <div key=${cat.id} class=${'tab-wrap' + (cat.name === current ? ' active' : '')}>
-                    <button
-                        class="tab"
-                        aria-current=${cat.name === current ? 'true' : undefined}
-                        onClick=${() => onSwitch(cat.name)}
+            ${categories.map(
+                (cat) => html`
+                    <div
+                        key=${cat.id}
+                        class=${'tab-wrap' + (cat.name === current ? ' active' : '')}
                     >
-                        ${cat.label}
-                    </button>
-                    <button
-                        class="tab-delete"
-                        title="Delete category"
-                        aria-label=${`Delete category ${cat.label}`}
-                        onClick=${() => onDelete(cat)}
-                    >×</button>
-                </div>
-            `)}
+                        <button
+                            class="tab"
+                            aria-current=${cat.name === current ? 'true' : undefined}
+                            onClick=${() => onSwitch(cat.name)}
+                        >
+                            ${cat.label}
+                        </button>
+                        <button
+                            class="tab-delete"
+                            title="Delete category"
+                            aria-label=${`Delete category ${cat.label}`}
+                            onClick=${() => onDelete(cat)}
+                        >
+                            ×
+                        </button>
+                    </div>
+                `,
+            )}
             <button class="tab-add-btn" title="Add category" onClick=${onAdd}>+</button>
             <button class="theme-btn" title=${title} onClick=${onToggleTheme}>
-                ${theme === 'dark' ? html`<${SunIcon}/>` : html`<${MoonIcon}/>`}
+                ${theme === 'dark' ? html`<${SunIcon} />` : html`<${MoonIcon} />`}
             </button>
         </nav>
     `;
@@ -128,7 +157,7 @@ function FilterTh({ filterKey, filters, onChange }) {
                 class="filter-input"
                 placeholder="Filter…"
                 value=${filters[filterKey] || ''}
-                onInput=${e => onChange(filterKey, e.target.value)}
+                onInput=${(e) => onChange(filterKey, e.target.value)}
             />
         </th>
     `;
@@ -144,8 +173,18 @@ function SelectAllCheckbox({ state, onChange }) {
     return html`<input type="checkbox" ref=${ref} onChange=${onChange} />`;
 }
 
-function BatchPanel({ selectedCount, batchDate, batchNotes, batchClearNotes, applying,
-                      onDateChange, onNotesChange, onClearNotesChange, onApply, onCancel }) {
+function BatchPanel({
+    selectedCount,
+    batchDate,
+    batchNotes,
+    batchClearNotes,
+    applying,
+    onDateChange,
+    onNotesChange,
+    onClearNotesChange,
+    onApply,
+    onCancel,
+}) {
     const canApply = !applying && selectedCount > 0 && (batchDate || batchNotes || batchClearNotes);
     // Use explicit htmlFor/id pairs (not wrapping <label>) so the label-input
     // association survives iOS Safari swallowing label clicks on date inputs.
@@ -159,7 +198,7 @@ function BatchPanel({ selectedCount, batchDate, batchNotes, batchClearNotes, app
                     type="date"
                     class="batch-input"
                     value=${batchDate}
-                    onInput=${e => onDateChange(e.target.value)}
+                    onInput=${(e) => onDateChange(e.target.value)}
                 />
             </div>
             <div class="batch-field">
@@ -171,7 +210,7 @@ function BatchPanel({ selectedCount, batchDate, batchNotes, batchClearNotes, app
                     placeholder=${batchClearNotes ? '(will be cleared)' : 'Notes…'}
                     value=${batchClearNotes ? '' : batchNotes}
                     disabled=${batchClearNotes}
-                    onInput=${e => onNotesChange(e.target.value)}
+                    onInput=${(e) => onNotesChange(e.target.value)}
                 />
             </div>
             <label class="batch-clear" for="batch-clear-notes">
@@ -179,7 +218,7 @@ function BatchPanel({ selectedCount, batchDate, batchNotes, batchClearNotes, app
                     id="batch-clear-notes"
                     type="checkbox"
                     checked=${batchClearNotes}
-                    onChange=${e => onClearNotesChange(e.target.checked)}
+                    onChange=${(e) => onClearNotesChange(e.target.checked)}
                 />
                 <span>Clear notes</span>
             </label>
@@ -187,13 +226,24 @@ function BatchPanel({ selectedCount, batchDate, batchNotes, batchClearNotes, app
                 <button class="batch-apply-btn" disabled=${!canApply} onClick=${onApply}>
                     ${applying ? 'Applying…' : 'Apply'}
                 </button>
-                <button class="batch-cancel-btn" disabled=${applying} onClick=${onCancel}>Cancel</button>
+                <button class="batch-cancel-btn" disabled=${applying} onClick=${onCancel}>
+                    Cancel
+                </button>
             </div>
         </div>
     `;
 }
 
-function EditableCell({ item, field, value, inputType, autoEdit, onAutoEditConsumed, onSave, batchMode }) {
+function EditableCell({
+    item,
+    field,
+    value,
+    inputType,
+    autoEdit,
+    onAutoEditConsumed,
+    onSave,
+    batchMode,
+}) {
     const [editing, setEditing] = useState(!!autoEdit);
     const inputRef = useRef(null);
     const tdRef = useRef(null);
@@ -239,9 +289,17 @@ function EditableCell({ item, field, value, inputType, autoEdit, onAutoEditConsu
     }, [field, item.id, onSave]);
 
     if (editing) {
-        const onKey = e => {
-            if (e.key === 'Enter' && inputType !== 'textarea') { e.preventDefault(); exitViaKeyboardRef.current = true; e.target.blur(); }
-            if (e.key === 'Escape') { cancelledRef.current = true; exitViaKeyboardRef.current = true; setEditing(false); }
+        const onKey = (e) => {
+            if (e.key === 'Enter' && inputType !== 'textarea') {
+                e.preventDefault();
+                exitViaKeyboardRef.current = true;
+                e.target.blur();
+            }
+            if (e.key === 'Escape') {
+                cancelledRef.current = true;
+                exitViaKeyboardRef.current = true;
+                setEditing(false);
+            }
         };
         const common = {
             ref: inputRef,
@@ -252,22 +310,36 @@ function EditableCell({ item, field, value, inputType, autoEdit, onAutoEditConsu
         };
         return html`
             <td class="editable" data-field=${field}>
-                ${inputType === 'textarea'
-                    ? html`<textarea ...${common} rows="2"></textarea>`
-                    : html`<input ...${common} type=${inputType === 'date' ? 'date' : 'text'} />`}
+                ${
+                    inputType === 'textarea'
+                        ? html`<textarea ...${common} rows="2"></textarea>`
+                        : html`<input
+                              ...${common}
+                              type=${inputType === 'date' ? 'date' : 'text'}
+                          />`
+                }
             </td>
         `;
     }
 
-    const display = field === 'date' ? (value ? formatDate(value) : '')
-        : value || (field === 'notes' ? '—' : '');
+    const display =
+        field === 'date'
+            ? value
+                ? formatDate(value)
+                : ''
+            : value || (field === 'notes' ? '—' : '');
     const cls = !value ? 'cell-placeholder' : '';
     // In batch mode the row's click target is the selection checkbox; clicking
     // a cell must not enter inline edit, which would race with batch apply.
     const onCellClick = batchMode ? undefined : () => setEditing(true);
-    const onCellKeyDown = batchMode ? undefined : e => {
-        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setEditing(true); }
-    };
+    const onCellKeyDown = batchMode
+        ? undefined
+        : (e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  setEditing(true);
+              }
+          };
     // role/aria-label make the cell discoverable as activatable by screen
     // readers; the label repeats the value because aria-label replaces content.
     return html`
@@ -286,37 +358,71 @@ function EditableCell({ item, field, value, inputType, autoEdit, onAutoEditConsu
     `;
 }
 
-function Row({ item, showNotes, autoEdit, onAutoEditConsumed, onSave, onDelete,
-               batchMode, selected, onToggleSelect }) {
+function Row({
+    item,
+    showNotes,
+    autoEdit,
+    onAutoEditConsumed,
+    onSave,
+    onDelete,
+    batchMode,
+    selected,
+    onToggleSelect,
+}) {
     return html`
         <tr>
-            ${batchMode ? html`
-                <td class="batch-check">
-                    <input type="checkbox" checked=${selected} onChange=${() => onToggleSelect(item.id)} />
-                </td>
-            ` : null}
+            ${
+                batchMode
+                    ? html`
+                          <td class="batch-check">
+                              <input
+                                  type="checkbox"
+                                  checked=${selected}
+                                  onChange=${() => onToggleSelect(item.id)}
+                              />
+                          </td>
+                      `
+                    : null
+            }
             <${EditableCell}
-                item=${item} field="description" value=${item.description} inputType="input"
-                autoEdit=${autoEdit} onAutoEditConsumed=${onAutoEditConsumed} onSave=${onSave}
+                item=${item}
+                field="description"
+                value=${item.description}
+                inputType="input"
+                autoEdit=${autoEdit}
+                onAutoEditConsumed=${onAutoEditConsumed}
+                onSave=${onSave}
                 batchMode=${batchMode}
             />
             <${EditableCell}
-                item=${item} field="date" value=${item.date} inputType="date" onSave=${onSave}
+                item=${item}
+                field="date"
+                value=${item.date}
+                inputType="date"
+                onSave=${onSave}
                 batchMode=${batchMode}
             />
-            ${showNotes
-                ? html`<${EditableCell}
-                    item=${item} field="notes" value=${item.notes} inputType="textarea" onSave=${onSave}
-                    batchMode=${batchMode}
-                />`
-                : html`<td></td>`}
+            ${
+                showNotes
+                    ? html`<${EditableCell}
+                          item=${item}
+                          field="notes"
+                          value=${item.notes}
+                          inputType="textarea"
+                          onSave=${onSave}
+                          batchMode=${batchMode}
+                      />`
+                    : html`<td></td>`
+            }
             <td>
                 <button
                     class="delete-btn"
                     title="Delete"
                     aria-label=${`Delete ${item.description}`}
                     onClick=${() => onDelete(item.id)}
-                >×</button>
+                >
+                    ×
+                </button>
             </td>
         </tr>
     `;
@@ -325,49 +431,119 @@ function Row({ item, showNotes, autoEdit, onAutoEditConsumed, onSave, onDelete,
 // Description, Date, Notes, delete-button — fixed across all rows.
 const STATIC_COL_COUNT = 4;
 
-function ItemsTable({ items, sortColumn, sortDir, filters, showNotes, hasActiveFilter, autoEditId,
-                     onToggleSort, onFilterChange, onShowNotes, onAutoEditConsumed, onSave, onDelete,
-                     batchMode, selectedIds, onToggleSelect, onToggleSelectAll, selectAllState }) {
+function ItemsTable({
+    items,
+    sortColumn,
+    sortDir,
+    filters,
+    showNotes,
+    hasActiveFilter,
+    autoEditId,
+    onToggleSort,
+    onFilterChange,
+    onShowNotes,
+    onAutoEditConsumed,
+    onSave,
+    onDelete,
+    batchMode,
+    selectedIds,
+    onToggleSelect,
+    onToggleSelectAll,
+    selectAllState,
+}) {
     const colCount = STATIC_COL_COUNT + (batchMode ? 1 : 0);
     return html`
         <table id="items-table">
             <thead>
                 <tr>
-                    ${batchMode ? html`
-                        <th class="batch-check">
-                            <${SelectAllCheckbox} state=${selectAllState} onChange=${onToggleSelectAll} />
-                        </th>
-                    ` : null}
-                    <${SortTh} label="Description" sortKey="description" sortColumn=${sortColumn} sortDir=${sortDir} onToggle=${onToggleSort} />
-                    <${SortTh} label="Date" sortKey="date" sortColumn=${sortColumn} sortDir=${sortDir} onToggle=${onToggleSort} />
-                    ${showNotes
-                        ? html`<${SortTh} id="notes-header" label="Notes" sortKey="notes" sortColumn=${sortColumn} sortDir=${sortDir} onToggle=${onToggleSort} />`
-                        : html`<th id="notes-header"><button class="show-notes-btn" onClick=${onShowNotes}>+ Notes</button></th>`}
+                    ${
+                        batchMode
+                            ? html`
+                                  <th class="batch-check">
+                                      <${SelectAllCheckbox}
+                                          state=${selectAllState}
+                                          onChange=${onToggleSelectAll}
+                                      />
+                                  </th>
+                              `
+                            : null
+                    }
+                    <${SortTh}
+                        label="Description"
+                        sortKey="description"
+                        sortColumn=${sortColumn}
+                        sortDir=${sortDir}
+                        onToggle=${onToggleSort}
+                    />
+                    <${SortTh}
+                        label="Date"
+                        sortKey="date"
+                        sortColumn=${sortColumn}
+                        sortDir=${sortDir}
+                        onToggle=${onToggleSort}
+                    />
+                    ${
+                        showNotes
+                            ? html`<${SortTh}
+                                  id="notes-header"
+                                  label="Notes"
+                                  sortKey="notes"
+                                  sortColumn=${sortColumn}
+                                  sortDir=${sortDir}
+                                  onToggle=${onToggleSort}
+                              />`
+                            : html`<th id="notes-header">
+                                  <button class="show-notes-btn" onClick=${onShowNotes}>
+                                      + Notes
+                                  </button>
+                              </th>`
+                    }
                     <th></th>
                 </tr>
                 <tr class="filter-row">
                     ${batchMode ? html`<th class="batch-check"></th>` : null}
-                    <${FilterTh} filterKey="description" filters=${filters} onChange=${onFilterChange} />
+                    <${FilterTh}
+                        filterKey="description"
+                        filters=${filters}
+                        onChange=${onFilterChange}
+                    />
                     <${FilterTh} filterKey="date" filters=${filters} onChange=${onFilterChange} />
-                    <${FilterTh} filterKey=${showNotes ? 'notes' : null} filters=${filters} onChange=${onFilterChange} />
+                    <${FilterTh}
+                        filterKey=${showNotes ? 'notes' : null}
+                        filters=${filters}
+                        onChange=${onFilterChange}
+                    />
                     <th></th>
                 </tr>
             </thead>
             <tbody>
-                ${items.length === 0
-                    ? html`
-                        <tr><td colspan=${colCount} class="empty-state">
-                            ${hasActiveFilter ? 'No matches for current filter.' : 'No entries yet — click + Add to get started.'}
-                        </td></tr>`
-                    : items.map(item => html`<${Row}
-                        key=${item.id} item=${item} showNotes=${showNotes}
-                        autoEdit=${autoEditId === item.id}
-                        onAutoEditConsumed=${onAutoEditConsumed}
-                        onSave=${onSave} onDelete=${onDelete}
-                        batchMode=${batchMode}
-                        selected=${selectedIds.has(item.id)}
-                        onToggleSelect=${onToggleSelect}
-                    />`)}
+                ${
+                    items.length === 0
+                        ? html` <tr>
+                              <td colspan=${colCount} class="empty-state">
+                                  ${
+                                      hasActiveFilter
+                                          ? 'No matches for current filter.'
+                                          : 'No entries yet — click + Add to get started.'
+                                  }
+                              </td>
+                          </tr>`
+                        : items.map(
+                              (item) =>
+                                  html`<${Row}
+                                      key=${item.id}
+                                      item=${item}
+                                      showNotes=${showNotes}
+                                      autoEdit=${autoEditId === item.id}
+                                      onAutoEditConsumed=${onAutoEditConsumed}
+                                      onSave=${onSave}
+                                      onDelete=${onDelete}
+                                      batchMode=${batchMode}
+                                      selected=${selectedIds.has(item.id)}
+                                      onToggleSelect=${onToggleSelect}
+                                  />`,
+                          )
+                }
             </tbody>
         </table>
     `;
@@ -432,7 +608,9 @@ function App() {
                 if (!stale) setLoadingItems(false);
             }
         })();
-        return () => { stale = true; };
+        return () => {
+            stale = true;
+        };
     }, [category]);
 
     // Derived: the column shows whenever any item has notes, or the user
@@ -440,14 +618,17 @@ function App() {
     const showNotes = notesForced || hasNotes(items);
 
     const filtered = useMemo(() => filterItems(items, filters), [items, filters]);
-    const sorted = useMemo(() => sortItems(filtered, sortColumn, sortDir), [filtered, sortColumn, sortDir]);
+    const sorted = useMemo(
+        () => sortItems(filtered, sortColumn, sortDir),
+        [filtered, sortColumn, sortDir],
+    );
     const visible = useMemo(() => sorted.slice(0, renderedCount), [sorted, renderedCount]);
-    const hasActiveFilter = Object.values(filters).some(v => v && v.length > 0);
+    const hasActiveFilter = Object.values(filters).some((v) => v && v.length > 0);
 
     // Select-all reflects the post-filter set, not the currently-rendered page.
     // Selections of items outside `sorted` (e.g., filtered out after being
     // selected) are preserved internally but ignored by this state.
-    const sortedIds = useMemo(() => sorted.map(i => i.id), [sorted]);
+    const sortedIds = useMemo(() => sorted.map((i) => i.id), [sorted]);
     const selectAllState = useMemo(
         () => computeSelectAllState(selectedIds, sortedIds),
         [selectedIds, sortedIds],
@@ -459,10 +640,13 @@ function App() {
     useEffect(() => {
         const sentinel = sentinelRef.current;
         if (!sentinel) return;
-        const observer = new IntersectionObserver(entries => {
-            if (!entries[0].isIntersecting) return;
-            setRenderedCount(c => c < sorted.length ? c + PAGE_SIZE : c);
-        }, { rootMargin: '200px' });
+        const observer = new IntersectionObserver(
+            (entries) => {
+                if (!entries[0].isIntersecting) return;
+                setRenderedCount((c) => (c < sorted.length ? c + PAGE_SIZE : c));
+            },
+            { rootMargin: '200px' },
+        );
         observer.observe(sentinel);
         return () => observer.disconnect();
     }, [sorted.length, renderedCount]);
@@ -476,7 +660,7 @@ function App() {
         setBatchClearNotes(false);
     }, []);
 
-    const switchCategory = name => {
+    const switchCategory = (name) => {
         if (name === category) return;
         exitBatchMode();
         setCategory(name);
@@ -496,7 +680,7 @@ function App() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ id: crypto.randomUUID(), label: label.trim() }),
             });
-            setCategories(cs => [...cs, created]);
+            setCategories((cs) => [...cs, created]);
             setCategory(created.name);
             setItems([]);
             setRenderedCount(PAGE_SIZE);
@@ -508,10 +692,11 @@ function App() {
     };
 
     const deleteCategory = async (cat) => {
-        if (!confirm(`Delete category "${cat.label}"?\n\nThis will fail if any items exist in it.`)) return;
+        if (!confirm(`Delete category "${cat.label}"?\n\nThis will fail if any items exist in it.`))
+            return;
         try {
             await api(`/api/categories/${cat.id}`, { method: 'DELETE' });
-            const remaining = categories.filter(c => c.id !== cat.id);
+            const remaining = categories.filter((c) => c.id !== cat.id);
             setCategories(remaining);
             if (category === cat.name) setCategory(remaining[0]?.name ?? null);
             setItems([]);
@@ -529,9 +714,14 @@ function App() {
             const { item } = await api('/api/items', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id: crypto.randomUUID(), category, description: 'New entry', date: today }),
+                body: JSON.stringify({
+                    id: crypto.randomUUID(),
+                    category,
+                    description: 'New entry',
+                    date: today,
+                }),
             });
-            setItems(cur => [item, ...cur]);
+            setItems((cur) => [item, ...cur]);
             setRenderedCount(PAGE_SIZE);
             setAutoEditId(item.id);
         } catch (err) {
@@ -546,7 +736,7 @@ function App() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ [field]: value }),
             });
-            setItems(cur => cur.map(i => i.id === id ? item : i));
+            setItems((cur) => cur.map((i) => (i.id === id ? item : i)));
         } catch (err) {
             setError(err.message);
         }
@@ -556,15 +746,15 @@ function App() {
         if (!confirm('Delete this entry?')) return;
         try {
             await api(`/api/items/${id}`, { method: 'DELETE' });
-            setItems(cur => cur.filter(i => i.id !== id));
+            setItems((cur) => cur.filter((i) => i.id !== id));
         } catch (err) {
             setError(err.message);
         }
     };
 
-    const toggleSort = column => {
+    const toggleSort = (column) => {
         if (sortColumn === column) {
-            setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+            setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
         } else {
             setSortColumn(column);
             setSortDir('asc');
@@ -573,12 +763,12 @@ function App() {
     };
 
     const onFilterChange = (field, value) => {
-        setFilters(f => ({ ...f, [field]: value }));
+        setFilters((f) => ({ ...f, [field]: value }));
         setRenderedCount(PAGE_SIZE);
     };
 
     const toggleSelectItem = useCallback((id) => {
-        setSelectedIds(prev => {
+        setSelectedIds((prev) => {
             const next = new Set(prev);
             if (next.has(id)) next.delete(id);
             else next.add(id);
@@ -587,7 +777,7 @@ function App() {
     }, []);
 
     const toggleSelectAll = useCallback(() => {
-        setSelectedIds(prev => toggleAllVisible(prev, sortedIds));
+        setSelectedIds((prev) => toggleAllVisible(prev, sortedIds));
     }, [sortedIds]);
 
     const applyBatch = useCallback(async () => {
@@ -608,11 +798,13 @@ function App() {
         let settled;
         try {
             settled = await Promise.allSettled(
-                ids.map(id => api(`/api/items/${id}`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(updates),
-                }).then(r => r.item))
+                ids.map((id) =>
+                    api(`/api/items/${id}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(updates),
+                    }).then((r) => r.item),
+                ),
             );
         } finally {
             setApplyingBatch(false);
@@ -626,8 +818,8 @@ function App() {
         });
 
         if (succeeded.length > 0) {
-            const map = Object.fromEntries(succeeded.map(i => [i.id, i]));
-            setItems(cur => cur.map(i => map[i.id] ?? i));
+            const map = Object.fromEntries(succeeded.map((i) => [i.id, i]));
+            setItems((cur) => cur.map((i) => map[i.id] ?? i));
         }
 
         if (failedIds.length === 0) {
@@ -654,54 +846,65 @@ function App() {
             <main class="app">
                 ${error && html`<div class="error">${error}</div>`}
                 ${loading && html`<div class="loading">Loading...</div>`}
-                ${!loading && !error && category && html`
-                    <div id="table-area">
-                        <div class="table-toolbar">
-                            <button class="add-btn" onClick=${addRow}>+ Add</button>
-                            <button
-                                class=${'batch-toggle-btn' + (batchMode ? ' active' : '')}
-                                onClick=${batchMode ? exitBatchMode : enterBatchMode}
-                            >Batch Edit</button>
+                ${
+                    !loading &&
+                    !error &&
+                    category &&
+                    html`
+                        <div id="table-area">
+                            <div class="table-toolbar">
+                                <button class="add-btn" onClick=${addRow}>+ Add</button>
+                                <button
+                                    class=${'batch-toggle-btn' + (batchMode ? ' active' : '')}
+                                    onClick=${batchMode ? exitBatchMode : enterBatchMode}
+                                >
+                                    Batch Edit
+                                </button>
+                            </div>
+                            ${
+                                batchMode
+                                    ? html`
+                                          <${BatchPanel}
+                                              selectedCount=${selectedIds.size}
+                                              batchDate=${batchDate}
+                                              batchNotes=${batchNotes}
+                                              batchClearNotes=${batchClearNotes}
+                                              applying=${applyingBatch}
+                                              onDateChange=${setBatchDate}
+                                              onNotesChange=${setBatchNotes}
+                                              onClearNotesChange=${setBatchClearNotes}
+                                              onApply=${applyBatch}
+                                              onCancel=${exitBatchMode}
+                                          />
+                                      `
+                                    : null
+                            }
+                            <div class="table-wrapper">
+                                <${ItemsTable}
+                                    items=${visible}
+                                    sortColumn=${sortColumn}
+                                    sortDir=${sortDir}
+                                    filters=${filters}
+                                    showNotes=${showNotes}
+                                    hasActiveFilter=${hasActiveFilter}
+                                    autoEditId=${autoEditId}
+                                    onToggleSort=${toggleSort}
+                                    onFilterChange=${onFilterChange}
+                                    onShowNotes=${() => setNotesForced(true)}
+                                    onAutoEditConsumed=${clearAutoEditId}
+                                    onSave=${saveField}
+                                    onDelete=${deleteRow}
+                                    batchMode=${batchMode}
+                                    selectedIds=${selectedIds}
+                                    onToggleSelect=${toggleSelectItem}
+                                    onToggleSelectAll=${toggleSelectAll}
+                                    selectAllState=${selectAllState}
+                                />
+                            </div>
+                            <div ref=${sentinelRef} class="scroll-sentinel"></div>
                         </div>
-                        ${batchMode ? html`
-                            <${BatchPanel}
-                                selectedCount=${selectedIds.size}
-                                batchDate=${batchDate}
-                                batchNotes=${batchNotes}
-                                batchClearNotes=${batchClearNotes}
-                                applying=${applyingBatch}
-                                onDateChange=${setBatchDate}
-                                onNotesChange=${setBatchNotes}
-                                onClearNotesChange=${setBatchClearNotes}
-                                onApply=${applyBatch}
-                                onCancel=${exitBatchMode}
-                            />
-                        ` : null}
-                        <div class="table-wrapper">
-                            <${ItemsTable}
-                                items=${visible}
-                                sortColumn=${sortColumn}
-                                sortDir=${sortDir}
-                                filters=${filters}
-                                showNotes=${showNotes}
-                                hasActiveFilter=${hasActiveFilter}
-                                autoEditId=${autoEditId}
-                                onToggleSort=${toggleSort}
-                                onFilterChange=${onFilterChange}
-                                onShowNotes=${() => setNotesForced(true)}
-                                onAutoEditConsumed=${clearAutoEditId}
-                                onSave=${saveField}
-                                onDelete=${deleteRow}
-                                batchMode=${batchMode}
-                                selectedIds=${selectedIds}
-                                onToggleSelect=${toggleSelectItem}
-                                onToggleSelectAll=${toggleSelectAll}
-                                selectAllState=${selectAllState}
-                            />
-                        </div>
-                        <div ref=${sentinelRef} class="scroll-sentinel"></div>
-                    </div>
-                `}
+                    `
+                }
             </main>
         </div>
     `;

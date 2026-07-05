@@ -13,13 +13,13 @@ A personal tracker for things you've seen — friends, family, shows, concerts, 
 
 ## Stack
 
-| Layer | Technology |
-|---|---|
-| Backend | Cloudflare Workers + Hono + Zod |
-| Database | Cloudflare D1 (SQLite) |
-| Frontend | Preact + htm, bundled with esbuild |
-| Auth | Cloudflare Access |
-| Testing | Vitest + `@cloudflare/vitest-pool-workers` |
+| Layer    | Technology                                 |
+| -------- | ------------------------------------------ |
+| Backend  | Cloudflare Workers + Hono + Zod            |
+| Database | Cloudflare D1 (SQLite)                     |
+| Frontend | Preact + htm, bundled with esbuild         |
+| Auth     | Cloudflare Access                          |
+| Testing  | Vitest + `@cloudflare/vitest-pool-workers` |
 
 ## Getting Started
 
@@ -63,6 +63,14 @@ npx wrangler d1 execute seen --local --file=prod.sql
 npm test
 ```
 
+### Formatting & linting
+
+```bash
+npm run format        # format all files with Prettier
+npm run format:check  # verify formatting (run in CI)
+npm run lint          # ESLint
+```
+
 ### Build
 
 The frontend is bundled from `frontend/` to `public/script.js` by `build.js` (esbuild). The bundle is gitignored. `npm run dev` runs the bundler in watch mode alongside `wrangler dev`; `npm run deploy` builds before deploying.
@@ -79,38 +87,38 @@ npm run deploy
 
 ## API
 
-| Method | Path | Description |
-|---|---|---|
-| `GET` | `/api/categories` | List all categories |
-| `POST` | `/api/categories` | Create a category |
-| `DELETE` | `/api/categories/:id` | Delete a category (must be empty) |
-| `GET` | `/api/items?category=X` | List items for a category |
-| `POST` | `/api/items` | Create an item |
-| `PUT` | `/api/items/:id` | Update an item |
-| `DELETE` | `/api/items/:id` | Delete an item |
+| Method   | Path                    | Description                       |
+| -------- | ----------------------- | --------------------------------- |
+| `GET`    | `/api/categories`       | List all categories               |
+| `POST`   | `/api/categories`       | Create a category                 |
+| `DELETE` | `/api/categories/:id`   | Delete a category (must be empty) |
+| `GET`    | `/api/items?category=X` | List items for a category         |
+| `POST`   | `/api/items`            | Create an item                    |
+| `PUT`    | `/api/items/:id`        | Update an item                    |
+| `DELETE` | `/api/items/:id`        | Delete an item                    |
 
 ## Database Schema
 
 **`categories`** — user-defined tabs
 
-| Column | Type | Notes |
-|---|---|---|
-| `id` | TEXT PK | UUID, client-generated |
-| `name` | TEXT UNIQUE | URL-safe slug derived from label |
-| `label` | TEXT | Display name |
-| `sort_order` | INTEGER | Tab order |
+| Column       | Type        | Notes                            |
+| ------------ | ----------- | -------------------------------- |
+| `id`         | TEXT PK     | UUID, client-generated           |
+| `name`       | TEXT UNIQUE | URL-safe slug derived from label |
+| `label`      | TEXT        | Display name                     |
+| `sort_order` | INTEGER     | Tab order                        |
 
 **`items`** — tracked entries
 
-| Column | Type | Notes |
-|---|---|---|
-| `id` | TEXT PK | UUID, client-generated |
-| `category` | TEXT | References a category `name` |
-| `description` | TEXT | Required |
-| `date` | TEXT | ISO date (`YYYY-MM-DD`) |
-| `notes` | TEXT | Optional; empty string treated as NULL |
-| `created_at` | TEXT | ISO timestamp |
-| `updated_at` | TEXT | ISO timestamp |
+| Column        | Type    | Notes                                  |
+| ------------- | ------- | -------------------------------------- |
+| `id`          | TEXT PK | UUID, client-generated                 |
+| `category`    | TEXT    | References a category `name`           |
+| `description` | TEXT    | Required                               |
+| `date`        | TEXT    | ISO date (`YYYY-MM-DD`)                |
+| `notes`       | TEXT    | Optional; empty string treated as NULL |
+| `created_at`  | TEXT    | ISO timestamp                          |
+| `updated_at`  | TEXT    | ISO timestamp                          |
 
 ## Authentication
 
