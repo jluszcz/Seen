@@ -1,7 +1,9 @@
 export const PAGE_SIZE = 25;
 
 export function hasNotes(items) {
-    return items.some(item => item.notes !== null && item.notes !== undefined && item.notes !== '');
+    return items.some(
+        (item) => item.notes !== null && item.notes !== undefined && item.notes !== '',
+    );
 }
 
 export function sortItems(items, column, direction) {
@@ -17,7 +19,9 @@ export function formatDate(isoDate) {
     if (!isoDate) return '';
     const [year, month, day] = isoDate.split('-').map(Number);
     return new Date(year, month - 1, day).toLocaleDateString('en-US', {
-        month: 'short', day: 'numeric', year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
     });
 }
 
@@ -26,7 +30,7 @@ export function filterItems(items, filters) {
     const descQ = description.toLowerCase();
     const dateQ = date.toLowerCase();
     const notesQ = notes.toLowerCase();
-    return items.filter(item => {
+    return items.filter((item) => {
         if (descQ && !(item.description ?? '').toLowerCase().includes(descQ)) return false;
         if (dateQ) {
             const iso = (item.date ?? '').toLowerCase();
@@ -58,7 +62,7 @@ export function computeSelectAllState(selectedIds, visibleItemIds) {
 // prior selections.
 export function toggleAllVisible(selectedIds, visibleItemIds) {
     const next = new Set(selectedIds);
-    const allSelected = visibleItemIds.length > 0 && visibleItemIds.every(id => next.has(id));
+    const allSelected = visibleItemIds.length > 0 && visibleItemIds.every((id) => next.has(id));
     if (allSelected) {
         for (const id of visibleItemIds) next.delete(id);
     } else {

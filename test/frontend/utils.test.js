@@ -45,8 +45,8 @@ describe('hasNotes', () => {
 
 const ITEMS = [
     { id: '1', description: 'Charlie', date: '2026-03-01', notes: null },
-    { id: '2', description: 'Alice',   date: '2026-01-15', notes: 'Nice' },
-    { id: '3', description: 'Bob',     date: '2026-05-10', notes: null },
+    { id: '2', description: 'Alice', date: '2026-01-15', notes: 'Nice' },
+    { id: '3', description: 'Bob', date: '2026-05-10', notes: null },
 ];
 
 describe('sortItems', () => {
@@ -58,28 +58,28 @@ describe('sortItems', () => {
 
     it('sorts by description ascending', () => {
         const sorted = sortItems(ITEMS, 'description', 'asc');
-        expect(sorted.map(i => i.description)).toEqual(['Alice', 'Bob', 'Charlie']);
+        expect(sorted.map((i) => i.description)).toEqual(['Alice', 'Bob', 'Charlie']);
     });
 
     it('sorts by description descending', () => {
         const sorted = sortItems(ITEMS, 'description', 'desc');
-        expect(sorted.map(i => i.description)).toEqual(['Charlie', 'Bob', 'Alice']);
+        expect(sorted.map((i) => i.description)).toEqual(['Charlie', 'Bob', 'Alice']);
     });
 
     it('sorts by date ascending', () => {
         const sorted = sortItems(ITEMS, 'date', 'asc');
-        expect(sorted.map(i => i.date)).toEqual(['2026-01-15', '2026-03-01', '2026-05-10']);
+        expect(sorted.map((i) => i.date)).toEqual(['2026-01-15', '2026-03-01', '2026-05-10']);
     });
 
     it('sorts by date descending', () => {
         const sorted = sortItems(ITEMS, 'date', 'desc');
-        expect(sorted.map(i => i.date)).toEqual(['2026-05-10', '2026-03-01', '2026-01-15']);
+        expect(sorted.map((i) => i.date)).toEqual(['2026-05-10', '2026-03-01', '2026-01-15']);
     });
 
     it('sorts by notes, treating null as empty string (asc)', () => {
         const sorted = sortItems(ITEMS, 'notes', 'asc');
         // nulls sort before 'Nice' ascending
-        const descriptions = sorted.map(i => i.description);
+        const descriptions = sorted.map((i) => i.description);
         const niceIndex = descriptions.indexOf('Alice');
         expect(niceIndex).toBe(descriptions.length - 1);
     });
@@ -101,27 +101,27 @@ describe('filterItems', () => {
 
     it('matches description case-insensitively', () => {
         const out = filterItems(ITEMS, { description: 'ALI' });
-        expect(out.map(i => i.description)).toEqual(['Alice']);
+        expect(out.map((i) => i.description)).toEqual(['Alice']);
     });
 
     it('matches notes case-insensitively, treating null as no match', () => {
         const out = filterItems(ITEMS, { notes: 'nic' });
-        expect(out.map(i => i.description)).toEqual(['Alice']);
+        expect(out.map((i) => i.description)).toEqual(['Alice']);
     });
 
     it('matches date by locale-formatted string', () => {
         const out = filterItems(ITEMS, { date: 'jan' });
-        expect(out.map(i => i.description)).toEqual(['Alice']);
+        expect(out.map((i) => i.description)).toEqual(['Alice']);
     });
 
     it('matches date by ISO substring', () => {
         const out = filterItems(ITEMS, { date: '2026-01' });
-        expect(out.map(i => i.description)).toEqual(['Alice']);
+        expect(out.map((i) => i.description)).toEqual(['Alice']);
     });
 
     it('combines multiple filters with AND semantics', () => {
         const out = filterItems(ITEMS, { description: 'a', date: '2026' });
-        expect(out.map(i => i.description)).toEqual(['Charlie', 'Alice']);
+        expect(out.map((i) => i.description)).toEqual(['Charlie', 'Alice']);
     });
 
     it('returns empty array when nothing matches', () => {
@@ -240,34 +240,42 @@ describe('buildBatchUpdates', () => {
     });
 
     it('includes date when set', () => {
-        expect(buildBatchUpdates({ date: '2026-05-24', notes: '', clearNotes: false }))
-            .toEqual({ date: '2026-05-24' });
+        expect(buildBatchUpdates({ date: '2026-05-24', notes: '', clearNotes: false })).toEqual({
+            date: '2026-05-24',
+        });
     });
 
     it('includes notes when set', () => {
-        expect(buildBatchUpdates({ date: '', notes: 'hi', clearNotes: false }))
-            .toEqual({ notes: 'hi' });
+        expect(buildBatchUpdates({ date: '', notes: 'hi', clearNotes: false })).toEqual({
+            notes: 'hi',
+        });
     });
 
     it('includes both date and notes when set', () => {
-        expect(buildBatchUpdates({ date: '2026-05-24', notes: 'hi', clearNotes: false }))
-            .toEqual({ date: '2026-05-24', notes: 'hi' });
+        expect(buildBatchUpdates({ date: '2026-05-24', notes: 'hi', clearNotes: false })).toEqual({
+            date: '2026-05-24',
+            notes: 'hi',
+        });
     });
 
     it('sends notes: null when clearNotes is true', () => {
-        expect(buildBatchUpdates({ date: '', notes: '', clearNotes: true }))
-            .toEqual({ notes: null });
+        expect(buildBatchUpdates({ date: '', notes: '', clearNotes: true })).toEqual({
+            notes: null,
+        });
     });
 
     it('clearNotes overrides a notes value', () => {
         // If the user typed something then toggled clear, the clear wins.
-        expect(buildBatchUpdates({ date: '', notes: 'ignored', clearNotes: true }))
-            .toEqual({ notes: null });
+        expect(buildBatchUpdates({ date: '', notes: 'ignored', clearNotes: true })).toEqual({
+            notes: null,
+        });
     });
 
     it('combines clearNotes with a date update', () => {
-        expect(buildBatchUpdates({ date: '2026-05-24', notes: '', clearNotes: true }))
-            .toEqual({ date: '2026-05-24', notes: null });
+        expect(buildBatchUpdates({ date: '2026-05-24', notes: '', clearNotes: true })).toEqual({
+            date: '2026-05-24',
+            notes: null,
+        });
     });
 
     it('omits whitespace-only notes', () => {
@@ -275,7 +283,8 @@ describe('buildBatchUpdates', () => {
     });
 
     it('trims surrounding whitespace from notes', () => {
-        expect(buildBatchUpdates({ date: '', notes: '  hello  ', clearNotes: false }))
-            .toEqual({ notes: 'hello' });
+        expect(buildBatchUpdates({ date: '', notes: '  hello  ', clearNotes: false })).toEqual({
+            notes: 'hello',
+        });
     });
 });

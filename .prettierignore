@@ -1,0 +1,9 @@
+node_modules/
+public/script.js
+public/script.js.map
+public/styles.css
+public/styles.css.map
+.wrangler/
+coverage/
+package-lock.json
+prod.sql

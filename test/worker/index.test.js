@@ -18,15 +18,18 @@ async function req(method, path, body) {
 }
 
 beforeAll(async () => {
-    await env.DB.prepare(`
+    await env.DB.prepare(
+        `
         CREATE TABLE IF NOT EXISTS categories (
             id         TEXT PRIMARY KEY,
             name       TEXT UNIQUE NOT NULL,
             label      TEXT NOT NULL,
             sort_order INTEGER NOT NULL DEFAULT 0
         )
-    `).run();
-    await env.DB.prepare(`
+    `,
+    ).run();
+    await env.DB.prepare(
+        `
         CREATE TABLE IF NOT EXISTS items (
             id          TEXT PRIMARY KEY,
             category    TEXT NOT NULL,
@@ -36,23 +39,24 @@ beforeAll(async () => {
             created_at  TEXT NOT NULL,
             updated_at  TEXT NOT NULL
         )
-    `).run();
+    `,
+    ).run();
 });
 
 beforeEach(async () => {
     await env.DB.exec('DELETE FROM items');
     await env.DB.exec('DELETE FROM categories');
     await env.DB.prepare(
-        "INSERT INTO categories (id, name, label, sort_order) VALUES ('cat-friends', 'friends', 'Friends', 1)"
+        "INSERT INTO categories (id, name, label, sort_order) VALUES ('cat-friends', 'friends', 'Friends', 1)",
     ).run();
     await env.DB.prepare(
-        "INSERT INTO categories (id, name, label, sort_order) VALUES ('cat-family', 'family', 'Family', 2)"
+        "INSERT INTO categories (id, name, label, sort_order) VALUES ('cat-family', 'family', 'Family', 2)",
     ).run();
     await env.DB.prepare(
-        "INSERT INTO categories (id, name, label, sort_order) VALUES ('cat-standup', 'standup', 'Standup Shows', 3)"
+        "INSERT INTO categories (id, name, label, sort_order) VALUES ('cat-standup', 'standup', 'Standup Shows', 3)",
     ).run();
     await env.DB.prepare(
-        "INSERT INTO categories (id, name, label, sort_order) VALUES ('cat-concerts', 'concerts', 'Concerts', 4)"
+        "INSERT INTO categories (id, name, label, sort_order) VALUES ('cat-concerts', 'concerts', 'Concerts', 4)",
     ).run();
 });
 
@@ -163,7 +167,7 @@ describe('POST /api/categories', () => {
                 headers: { 'Content-Type': 'application/json' },
                 body: 'not-json',
             }),
-            makeEnv()
+            makeEnv(),
         );
         expect(r.status).toBe(400);
         expect((await r.json()).error).toBe('Invalid JSON body');
@@ -184,7 +188,7 @@ describe('DELETE /api/categories/:id', () => {
     it('category is no longer returned after deletion', async () => {
         await req('DELETE', '/api/categories/cat-concerts');
         const { categories } = await (await req('GET', '/api/categories')).json();
-        expect(categories.find(c => c.name === 'concerts')).toBeUndefined();
+        expect(categories.find((c) => c.name === 'concerts')).toBeUndefined();
     });
 
     it('returns 404 for unknown id', async () => {
@@ -193,7 +197,12 @@ describe('DELETE /api/categories/:id', () => {
     });
 
     it('returns 409 when category has items', async () => {
-        await req('POST', '/api/items', { id: 'i1', category: 'friends', description: 'Alice', date: '2026-01-01' });
+        await req('POST', '/api/items', {
+            id: 'i1',
+            category: 'friends',
+            description: 'Alice',
+            date: '2026-01-01',
+        });
         const r = await req('DELETE', '/api/categories/cat-friends');
         expect(r.status).toBe(409);
     });
@@ -221,8 +230,18 @@ describe('GET /api/items', () => {
     });
 
     it('returns only items for the requested category', async () => {
-        await req('POST', '/api/items', { id: 'a', category: 'friends', description: 'Alice', date: '2026-01-01' });
-        await req('POST', '/api/items', { id: 'b', category: 'family', description: 'Bob', date: '2026-01-02' });
+        await req('POST', '/api/items', {
+            id: 'a',
+            category: 'friends',
+            description: 'Alice',
+            date: '2026-01-01',
+        });
+        await req('POST', '/api/items', {
+            id: 'b',
+            category: 'family',
+            description: 'Bob',
+            date: '2026-01-02',
+        });
 
         const r = await req('GET', '/api/items?category=friends');
         const { items } = await r.json();
@@ -231,8 +250,18 @@ describe('GET /api/items', () => {
     });
 
     it('returns items ordered by date descending', async () => {
-        await req('POST', '/api/items', { id: 'x1', category: 'concerts', description: 'Old', date: '2025-01-01' });
-        await req('POST', '/api/items', { id: 'x2', category: 'concerts', description: 'New', date: '2026-05-01' });
+        await req('POST', '/api/items', {
+            id: 'x1',
+            category: 'concerts',
+            description: 'Old',
+            date: '2025-01-01',
+        });
+        await req('POST', '/api/items', {
+            id: 'x2',
+            category: 'concerts',
+            description: 'New',
+            date: '2026-05-01',
+        });
 
         const { items } = await (await req('GET', '/api/items?category=concerts')).json();
         expect(items[0].description).toBe('New');
@@ -242,14 +271,17 @@ describe('GET /api/items', () => {
     it('breaks date ties by created_at descending', async () => {
         // Insert directly so created_at is deterministic; POSTs in quick
         // succession can land on the same millisecond.
-        const insert = (id, description, createdAt) => env.DB.prepare(
-            "INSERT INTO items (id, category, description, date, notes, created_at, updated_at) VALUES (?, 'concerts', ?, '2026-05-01', NULL, ?, ?)"
-        ).bind(id, description, createdAt, createdAt).run();
+        const insert = (id, description, createdAt) =>
+            env.DB.prepare(
+                "INSERT INTO items (id, category, description, date, notes, created_at, updated_at) VALUES (?, 'concerts', ?, '2026-05-01', NULL, ?, ?)",
+            )
+                .bind(id, description, createdAt, createdAt)
+                .run();
         await insert('tie1', 'Earlier', '2026-05-01T10:00:00.000Z');
         await insert('tie2', 'Later', '2026-05-01T12:00:00.000Z');
 
         const { items } = await (await req('GET', '/api/items?category=concerts')).json();
-        expect(items.map(i => i.description)).toEqual(['Later', 'Earlier']);
+        expect(items.map((i) => i.description)).toEqual(['Later', 'Earlier']);
     });
 });
 
@@ -260,7 +292,11 @@ describe('GET /api/items', () => {
 describe('POST /api/items', () => {
     it('creates an item and returns 201', async () => {
         const r = await req('POST', '/api/items', {
-            id: 'new1', category: 'standup', description: 'John Mulaney', date: '2026-03-15', notes: 'Great show',
+            id: 'new1',
+            category: 'standup',
+            description: 'John Mulaney',
+            date: '2026-03-15',
+            notes: 'Great show',
         });
         expect(r.status).toBe(201);
         const { item } = await r.json();
@@ -270,51 +306,88 @@ describe('POST /api/items', () => {
     });
 
     it('stores null notes when omitted', async () => {
-        await req('POST', '/api/items', { id: 'n2', category: 'friends', description: 'Carol', date: '2026-02-01' });
+        await req('POST', '/api/items', {
+            id: 'n2',
+            category: 'friends',
+            description: 'Carol',
+            date: '2026-02-01',
+        });
         const { items } = await (await req('GET', '/api/items?category=friends')).json();
         expect(items[0].notes).toBeNull();
     });
 
     it('returns 400 when description is missing', async () => {
-        const r = await req('POST', '/api/items', { id: 'n3', category: 'friends', date: '2026-01-01' });
+        const r = await req('POST', '/api/items', {
+            id: 'n3',
+            category: 'friends',
+            date: '2026-01-01',
+        });
         expect(r.status).toBe(400);
     });
 
     it('returns 400 when description is whitespace-only', async () => {
         const r = await req('POST', '/api/items', {
-            id: 'n3a', category: 'friends', description: '   ', date: '2026-01-01',
+            id: 'n3a',
+            category: 'friends',
+            description: '   ',
+            date: '2026-01-01',
         });
         expect(r.status).toBe(400);
     });
 
     it('returns 409 when item id already exists', async () => {
-        await req('POST', '/api/items', { id: 'dup', category: 'friends', description: 'First', date: '2026-01-01' });
-        const r = await req('POST', '/api/items', { id: 'dup', category: 'friends', description: 'Second', date: '2026-01-02' });
+        await req('POST', '/api/items', {
+            id: 'dup',
+            category: 'friends',
+            description: 'First',
+            date: '2026-01-01',
+        });
+        const r = await req('POST', '/api/items', {
+            id: 'dup',
+            category: 'friends',
+            description: 'Second',
+            date: '2026-01-02',
+        });
         expect(r.status).toBe(409);
     });
 
     it('returns 400 when date is missing', async () => {
-        const r = await req('POST', '/api/items', { id: 'n4', category: 'friends', description: 'Dave' });
+        const r = await req('POST', '/api/items', {
+            id: 'n4',
+            category: 'friends',
+            description: 'Dave',
+        });
         expect(r.status).toBe(400);
     });
 
     it('returns 400 when date is not YYYY-MM-DD', async () => {
         const r = await req('POST', '/api/items', {
-            id: 'n4a', category: 'friends', description: 'Dave', date: '0026-01-01',
+            id: 'n4a',
+            category: 'friends',
+            description: 'Dave',
+            date: '0026-01-01',
         });
         // 4-digit year regex still allows "0026", which is intentional —
         // the goal here is to reject free-form garbage like "tomorrow" or "1/2/26".
         expect(r.status).toBe(201);
 
         const garbage = await req('POST', '/api/items', {
-            id: 'n4b', category: 'friends', description: 'Dave', date: '1/2/26',
+            id: 'n4b',
+            category: 'friends',
+            description: 'Dave',
+            date: '1/2/26',
         });
         expect(garbage.status).toBe(400);
         expect((await garbage.json()).error).toMatch(/YYYY-MM-DD/);
     });
 
     it('returns 400 for category not in categories table', async () => {
-        const r = await req('POST', '/api/items', { id: 'n5', category: 'movies', description: 'X', date: '2026-01-01' });
+        const r = await req('POST', '/api/items', {
+            id: 'n5',
+            category: 'movies',
+            description: 'X',
+            date: '2026-01-01',
+        });
         expect(r.status).toBe(400);
     });
 });
@@ -325,7 +398,12 @@ describe('POST /api/items', () => {
 
 describe('PUT /api/items/:id', () => {
     beforeEach(async () => {
-        await req('POST', '/api/items', { id: 'upd1', category: 'family', description: 'Mom', date: '2026-05-01' });
+        await req('POST', '/api/items', {
+            id: 'upd1',
+            category: 'family',
+            description: 'Mom',
+            date: '2026-05-01',
+        });
     });
 
     it('updates description', async () => {
@@ -385,7 +463,10 @@ describe('PUT /api/items/:id', () => {
         });
 
         it('accepts { date, notes } together', async () => {
-            const r = await req('PUT', '/api/items/upd1', { date: '2026-06-15', notes: 'Birthday' });
+            const r = await req('PUT', '/api/items/upd1', {
+                date: '2026-06-15',
+                notes: 'Birthday',
+            });
             expect(r.status).toBe(200);
             const { item } = await r.json();
             expect(item.date).toBe('2026-06-15');
@@ -409,7 +490,12 @@ describe('PUT /api/items/:id', () => {
 
 describe('DELETE /api/items/:id', () => {
     beforeEach(async () => {
-        await req('POST', '/api/items', { id: 'del1', category: 'concerts', description: 'Hozier', date: '2025-09-18' });
+        await req('POST', '/api/items', {
+            id: 'del1',
+            category: 'concerts',
+            description: 'Hozier',
+            date: '2025-09-18',
+        });
     });
 
     it('deletes an item and returns success', async () => {
