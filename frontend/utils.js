@@ -71,6 +71,21 @@ export function toggleAllVisible(selectedIds, visibleItemIds) {
     return next;
 }
 
+// Quote a CSV field only when it contains a delimiter, quote, or newline,
+// doubling any embedded quotes per RFC 4180.
+function csvField(value) {
+    const s = value == null ? '' : String(value);
+    return /["\n\r,]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+
+// Serialize items to RFC 4180 CSV text (CRLF line endings). Columns mirror the
+// table: Description, Date (raw ISO), Notes. A header row is always emitted.
+export function toCsv(items) {
+    const header = ['Description', 'Date', 'Notes'];
+    const rows = items.map((item) => [item.description, item.date, item.notes]);
+    return [header, ...rows].map((row) => row.map(csvField).join(',')).join('\r\n');
+}
+
 export function buildBatchUpdates({ date, notes, clearNotes }) {
     const updates = {};
     if (date) updates.date = date;
