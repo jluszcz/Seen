@@ -7,6 +7,7 @@ import {
     computeSelectAllState,
     toggleAllVisible,
     buildBatchUpdates,
+    toCsv,
 } from '../../frontend/utils.js';
 
 // ---------------------------------------------------------------------------
@@ -286,5 +287,48 @@ describe('buildBatchUpdates', () => {
         expect(buildBatchUpdates({ date: '', notes: '  hello  ', clearNotes: false })).toEqual({
             notes: 'hello',
         });
+    });
+});
+
+// ---------------------------------------------------------------------------
+// toCsv
+// ---------------------------------------------------------------------------
+
+describe('toCsv', () => {
+    it('emits a header row for an empty list', () => {
+        expect(toCsv([])).toBe('Description,Date,Notes');
+    });
+
+    it('serializes description, raw ISO date, and notes', () => {
+        const csv = toCsv([{ description: 'Show A', date: '2026-01-15', notes: 'great' }]);
+        expect(csv).toBe('Description,Date,Notes\r\nShow A,2026-01-15,great');
+    });
+
+    it('renders missing notes as an empty field', () => {
+        const csv = toCsv([{ description: 'Show A', date: '2026-01-15', notes: null }]);
+        expect(csv).toBe('Description,Date,Notes\r\nShow A,2026-01-15,');
+    });
+
+    it('separates rows with CRLF', () => {
+        const csv = toCsv([
+            { description: 'A', date: '2026-01-01', notes: null },
+            { description: 'B', date: '2026-01-02', notes: null },
+        ]);
+        expect(csv.split('\r\n')).toHaveLength(3);
+    });
+
+    it('quotes fields containing commas', () => {
+        const csv = toCsv([{ description: 'Doe, John', date: '2026-01-15', notes: null }]);
+        expect(csv).toBe('Description,Date,Notes\r\n"Doe, John",2026-01-15,');
+    });
+
+    it('escapes embedded double quotes by doubling them', () => {
+        const csv = toCsv([{ description: 'The "Big" Show', date: '2026-01-15', notes: null }]);
+        expect(csv).toBe('Description,Date,Notes\r\n"The ""Big"" Show",2026-01-15,');
+    });
+
+    it('quotes fields containing newlines', () => {
+        const csv = toCsv([{ description: 'A', date: '2026-01-15', notes: 'line1\nline2' }]);
+        expect(csv).toBe('Description,Date,Notes\r\nA,2026-01-15,"line1\nline2"');
     });
 });

@@ -10,7 +10,7 @@ This file provides guidance to Claude Code when working with code in this reposi
 
 - `frontend/` — Preact + htm frontend source
     - `script.js` — `App` component + child components managing all state and rendering
-    - `utils.js` — Pure helpers (`filterItems`, `sortItems`, `hasNotes`, `formatDate`, `PAGE_SIZE`); shared with tests
+    - `utils.js` — Pure helpers (`filterItems`, `sortItems`, `hasNotes`, `formatDate`, `toCsv`, `PAGE_SIZE`); shared with tests
     - `styles.css` — Minimal, neutral styling
 - `public/` — Served static assets
     - `index.html` — App shell that loads the bundled script

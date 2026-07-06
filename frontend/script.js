@@ -9,6 +9,7 @@ import {
     computeSelectAllState,
     toggleAllVisible,
     buildBatchUpdates,
+    toCsv,
     PAGE_SIZE,
 } from './utils.js';
 
@@ -98,7 +99,36 @@ const MoonIcon = () => html`
     </svg>
 `;
 
-function Tabs({ categories, current, onSwitch, onAdd, onDelete, theme, onToggleTheme }) {
+const DownloadIcon = () => html`
+    <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        aria-hidden="true"
+    >
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+        <polyline points="7 10 12 15 17 10" />
+        <line x1="12" x2="12" y1="15" y2="3" />
+    </svg>
+`;
+
+function Tabs({
+    categories,
+    current,
+    onSwitch,
+    onAdd,
+    onDelete,
+    onDownload,
+    downloadDisabled,
+    theme,
+    onToggleTheme,
+}) {
     const title = theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode';
     return html`
         <nav class="tabs">
@@ -127,6 +157,15 @@ function Tabs({ categories, current, onSwitch, onAdd, onDelete, theme, onToggleT
                 `,
             )}
             <button class="tab-add-btn" title="Add category" onClick=${onAdd}>+</button>
+            <button
+                class="download-btn"
+                title="Download this category as CSV"
+                aria-label="Download this category as CSV"
+                disabled=${downloadDisabled}
+                onClick=${onDownload}
+            >
+                <${DownloadIcon} />
+            </button>
             <button class="theme-btn" title=${title} onClick=${onToggleTheme}>
                 ${theme === 'dark' ? html`<${SunIcon} />` : html`<${MoonIcon} />`}
             </button>
@@ -832,6 +871,22 @@ function App() {
         }
     }, [applyingBatch, batchDate, batchNotes, batchClearNotes, selectedIds, exitBatchMode]);
 
+    // Export the current category's rows as currently filtered and sorted (not
+    // limited by the infinite-scroll page). Named after the category slug.
+    const downloadCsv = useCallback(() => {
+        const csv = toCsv(sorted);
+        // Prepend a UTF-8 BOM so Excel reads accented characters correctly.
+        const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${category}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+    }, [sorted, category]);
+
     return html`
         <div class="container">
             <${Tabs}
@@ -840,6 +895,8 @@ function App() {
                 onSwitch=${switchCategory}
                 onAdd=${addCategory}
                 onDelete=${deleteCategory}
+                onDownload=${downloadCsv}
+                downloadDisabled=${sorted.length === 0}
                 theme=${theme}
                 onToggleTheme=${toggleTheme}
             />
