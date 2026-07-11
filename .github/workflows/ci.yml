@@ -1,4 +1,4 @@
-name: Tests
+name: CI
 
 on:
     push:
@@ -9,8 +9,8 @@ on:
             - main
 
 jobs:
-    test:
-        name: Run Unit Tests
+    build:
+        name: Build, Test & Lint
         runs-on: ubuntu-latest
 
         steps:
@@ -26,14 +26,13 @@ jobs:
             - name: Install dependencies
               run: npm ci
 
-            - name: Check formatting
-              run: npm run format:check
-
-            - name: Lint
-              run: npm run lint
-
             - name: Build
               run: npm run build
 
-            - name: Run tests
+            - name: Test
               run: npm test
+
+            - name: Lint
+              run: |
+                  npm run lint
+                  npm run format:check

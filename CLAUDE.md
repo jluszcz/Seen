@@ -47,7 +47,9 @@ The frontend lives in `frontend/` and is bundled to `public/` by `build.js` (esb
 - `npm run format:check` — verify formatting without writing (run in CI)
 - `npm test` — runs Vitest only. Tests import from `frontend/utils.js` directly; they do not depend on the bundle.
 
-CI (`.github/workflows/test.yml`) runs `format:check`, `lint`, `build`, and `test` on every push and PR to `main`. A Prettier pre-commit hook is also configured in `.pre-commit-config.yaml`.
+CI (`.github/workflows/ci.yml`, workflow "CI") runs `build`, `test`, `lint`, and `format:check` on every push and PR to `main`. A Prettier pre-commit hook is also configured in `.pre-commit-config.yaml`.
+
+**Before committing any change, run `npm run format:check`, `npm run lint`, `npm run build`, and `npm test` locally and confirm they all pass.** These are exactly the checks CI runs, and a commit that fails any of them should not be made.
 
 When editing the frontend, edit files under `frontend/`. Do not edit `public/script.js` or `public/styles.css` — they are build output.
 
