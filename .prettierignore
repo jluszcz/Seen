@@ -7,3 +7,4 @@ public/styles.css.map
 coverage/
 package-lock.json
 prod.sql
+.github/
