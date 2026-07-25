@@ -10,17 +10,18 @@ This file provides guidance to Claude Code when working with code in this reposi
 
 - `frontend/` — Preact + htm frontend source
     - `script.js` — `App` component + child components managing all state and rendering
-    - `utils.js` — Pure helpers (`filterItems`, `sortItems`, `hasNotes`, `formatDate`, `toCsv`, `PAGE_SIZE`); shared with tests
+    - `utils.js` — Pure helpers (`filterItems`, `sortItems`, `hasNotes`, `formatDate`, `toCsv`, `computeSelectAllState`, `toggleAllVisible`, `buildBatchUpdates`, `categoryDeletionEffects`, `describeSelection`, `deselectId`, `storedTheme`, `readStoredTheme`, `writeStoredTheme`, `PAGE_SIZE`); shared with tests
     - `styles.css` — Minimal, neutral styling
 - `public/` — Served static assets
     - `index.html` — App shell that loads the bundled script
-    - `script.js`, `script.js.map`, `styles.css` — esbuild output (gitignored, produced by `npm run build`)
+    - `script.js`, `script.js.map`, `styles.css`, `styles.css.map` — esbuild output (gitignored, produced by `npm run build`)
 - `src/` — Cloudflare Workers backend
     - `index.js` — Hono app + CRUD API for categories and items
 - `migrations/` — D1 SQL migrations (applied via wrangler)
 - `test/` — Tests
     - `test/worker/` — Worker API tests (use `@cloudflare/vitest-pool-workers`)
-    - `test/frontend/` — Frontend unit tests (logic only, no DOM)
+    - `test/frontend/` — Frontend unit tests (logic only, no DOM). This is a deliberate constraint: any decision worth testing gets extracted into a pure helper in `frontend/utils.js` rather than tested through rendered output. The wiring inside `App` is therefore uncovered — be correspondingly careful editing it
+    - `test/worker/index.test.js` applies the repository's own migrations via `applyD1Migrations(env.DB, env.TEST_MIGRATIONS)`; the migrations are read in `vitest.config.mjs` and passed through as a binding. Do not hand-roll schema in tests — it drifts
 - `build.js` — esbuild bundler for the frontend (one-shot + `--watch` mode)
 - `seed.sql` — Representative seed data for local dev
 - `wrangler.toml` — Cloudflare Workers configuration
@@ -45,9 +46,10 @@ The frontend lives in `frontend/` and is bundled to `public/` by `build.js` (esb
 - `npm run lint` — ESLint (flat config in `eslint.config.js`)
 - `npm run format` — format all files with Prettier (config in `.prettierrc.json`, ignores in `.prettierignore`)
 - `npm run format:check` — verify formatting without writing (run in CI)
-- `npm test` — runs Vitest only. Tests import from `frontend/utils.js` directly; they do not depend on the bundle.
+- `npm test` — runs Vitest once. Tests import from `frontend/utils.js` directly; they do not depend on the bundle.
+- `npm run test:watch` — Vitest in watch mode
 
-CI (`.github/workflows/ci.yml`, workflow "CI") runs `build`, `test`, `lint`, and `format:check` on every push and PR to `main`. A Prettier pre-commit hook is also configured in `.pre-commit-config.yaml`.
+`.github/workflows/ci.yml` is a thin caller of `jluszcz/github-utils/.github/workflows/node-ci.yml@v1` — the steps live in that shared workflow, not here. It runs `build`, `test`, `lint`, and `format:check` on Node 22 for every push and PR to `main`. The resulting check is named **"Build, Test & Lint"**, which is the name branch-protection rulesets must reference. A Prettier pre-commit hook is also configured in `.pre-commit-config.yaml`.
 
 **Before committing any change, run `npm run format:check`, `npm run lint`, `npm run build`, and `npm test` locally and confirm they all pass.** These are exactly the checks CI runs, and a commit that fails any of them should not be made.
 
@@ -133,13 +135,24 @@ Two tables:
 
 ### Frontend
 
-- `App` (Preact functional component) owns top-level state (categories, current category, items, sort, filters, rendered count); cell-level edit state lives in `EditableCell`
+- `App` (Preact functional component) owns top-level state (categories, current category, items, sort, filters, rendered count, `batchMode`, `selectedIds`, `batchDate`/`batchNotes`/`batchClearNotes`, `applyingBatch`); cell-level edit and in-flight save state lives in `EditableCell`; theme lives in the `useTheme` hook
 - Notes column is hidden per-category when all `notes` values are null
 - Inline editing: click a cell → input appears; Enter/blur saves; Escape cancels (cancel uses a `cancelledRef` flag so the synthetic `onBlur` becomes a no-op on Escape)
 - Per-column filters in a second header row; date filter matches both ISO (`2026-01`) and locale (`Jan`) substrings
 - Infinite scroll: client renders 25 rows initially, appends another 25 as an `IntersectionObserver` sentinel enters the viewport
+- Batch edit mode: select rows, then set a date and/or notes on all of them with one `PUT` per row. Selections deliberately survive filtering (`toggleAllVisible`), so the panel labels how many are hidden (`describeSelection`)
+- CSV export of the current category's filtered, sorted rows (`toCsv`)
+- Light/dark theme toggle following `prefers-color-scheme` until the user overrides it; the override lives in `localStorage`, read through `storedTheme`/`readStoredTheme` because storage access throws outright in some browsers
+
+**Batch state resets from a single `useEffect` keyed on `category`.** Resetting it per handler is how selections from one category once survived into another, where Apply silently updated rows the user could no longer see. Any new path that changes the category is covered automatically; do not reintroduce per-handler resets.
+
+**Deleting a category only clears the item view when it is the current one** (`categoryDeletionEffects`). The fetch effect keys off `category`, so clearing items without changing the category blanks a table whose rows are still there.
 
 ## Configuration Notes
+
+### `.env`
+
+`.env` is a symlink to `~/.config/envrc/seen` and is **not** part of the repo — Wrangler and the Vitest pool load it as Worker secrets, which is why `npm test` prints "Using secrets defined in .env". Nothing in `src/`, `frontend/`, or `test/` reads a secret today; the Worker only uses its `DB` and `ASSETS` bindings. There is deliberately no `.env.example`: the one that existed documented a `D1_DATABASE_ID` variable nothing reads (`wrangler.toml` hardcodes `database_id`, see below).
 
 ### D1 Database ID in wrangler.toml
 

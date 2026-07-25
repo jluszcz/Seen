@@ -9,6 +9,9 @@ A personal tracker for things you've seen — friends, family, shows, concerts, 
 - Notes column auto-hides when all values in a category are empty
 - Sortable columns and per-column filters; infinite scroll loads 25 rows at a time
 - Categories are fully dynamic — add or remove them from the UI
+- Batch edit mode — select rows and set a date or notes on all of them at once
+- CSV export of the current category
+- Light/dark theme toggle that follows the OS preference until you override it
 - Zero-code authentication via Cloudflare Access
 
 ## Stack
