@@ -5,8 +5,12 @@
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>Seen</title>
         <script>
-            const t = localStorage.getItem('theme');
-            if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t;
+            // Storage access throws in some contexts (Safari private mode); an
+            // uncaught error here blocks the rest of the page from parsing.
+            try {
+                const t = localStorage.getItem('theme');
+                if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t;
+            } catch {}
         </script>
         <link rel="stylesheet" href="styles.css" />
     </head>

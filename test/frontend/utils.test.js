@@ -8,6 +8,11 @@ import {
     toggleAllVisible,
     buildBatchUpdates,
     toCsv,
+    categoryDeletionEffects,
+    describeSelection,
+    deselectId,
+    readStoredTheme,
+    storedTheme,
 } from '../../frontend/utils.js';
 
 // ---------------------------------------------------------------------------
@@ -330,5 +335,146 @@ describe('toCsv', () => {
     it('quotes fields containing newlines', () => {
         const csv = toCsv([{ description: 'A', date: '2026-01-15', notes: 'line1\nline2' }]);
         expect(csv).toBe('Description,Date,Notes\r\nA,2026-01-15,"line1\nline2"');
+    });
+});
+
+// ---------------------------------------------------------------------------
+// categoryDeletionEffects
+// ---------------------------------------------------------------------------
+
+describe('categoryDeletionEffects', () => {
+    const remaining = [{ name: 'books' }, { name: 'films' }];
+
+    it('moves to the first remaining category when the current one is deleted', () => {
+        expect(categoryDeletionEffects('music', 'music', remaining)).toEqual({
+            resetItemView: true,
+            nextCategory: 'books',
+        });
+    });
+
+    it('reports no category left when the last one is deleted', () => {
+        expect(categoryDeletionEffects('music', 'music', [])).toEqual({
+            resetItemView: true,
+            nextCategory: null,
+        });
+    });
+
+    it('leaves the item view alone when another category is deleted', () => {
+        // The fetch effect keys off `category`, so blanking the items without
+        // changing the category leaves the table empty until the user switches
+        // tabs — the current category's rows are still there on the server.
+        expect(categoryDeletionEffects('music', 'films', remaining)).toEqual({
+            resetItemView: false,
+            nextCategory: 'films',
+        });
+    });
+});
+
+// ---------------------------------------------------------------------------
+// describeSelection
+// ---------------------------------------------------------------------------
+
+describe('describeSelection', () => {
+    it('reports a plain count when every selection is visible', () => {
+        expect(describeSelection(new Set(['a', 'b']), ['a', 'b', 'c'])).toBe('2 selected');
+    });
+
+    it('calls out selections the filter is hiding', () => {
+        // Apply acts on the whole selection, so a bare count understates what
+        // the button is about to change.
+        expect(describeSelection(new Set(['a', 'b', 'z']), ['a', 'b'])).toBe(
+            '3 selected (1 hidden by filter)',
+        );
+    });
+
+    it('pluralizes the hidden count', () => {
+        expect(describeSelection(new Set(['a', 'y', 'z']), ['a'])).toBe(
+            '3 selected (2 hidden by filter)',
+        );
+    });
+
+    it('handles an empty selection', () => {
+        expect(describeSelection(new Set(), ['a'])).toBe('0 selected');
+    });
+});
+
+// ---------------------------------------------------------------------------
+// deselectId
+// ---------------------------------------------------------------------------
+
+describe('deselectId', () => {
+    it('drops the id and leaves the rest', () => {
+        expect([...deselectId(new Set(['a', 'b']), 'a')]).toEqual(['b']);
+    });
+
+    it('does not mutate the original set', () => {
+        const original = new Set(['a', 'b']);
+        deselectId(original, 'a');
+        expect(original.has('a')).toBe(true);
+    });
+
+    it('is a no-op for an id that was never selected', () => {
+        expect([...deselectId(new Set(['a']), 'zz')]).toEqual(['a']);
+    });
+});
+
+// ---------------------------------------------------------------------------
+// readStoredTheme
+// ---------------------------------------------------------------------------
+
+describe('readStoredTheme', () => {
+    const store = (value) => ({ getItem: () => value });
+
+    it('uses a stored theme', () => {
+        expect(readStoredTheme(store('dark'), false)).toBe('dark');
+    });
+
+    it('ignores a stored value that is not a theme', () => {
+        expect(readStoredTheme(store('chartreuse'), true)).toBe('dark');
+    });
+
+    it('falls back to the OS preference when nothing is stored', () => {
+        expect(readStoredTheme(store(null), true)).toBe('dark');
+        expect(readStoredTheme(store(null), false)).toBe('light');
+    });
+
+    it('survives storage that throws', () => {
+        // Safari in private mode throws SecurityError on access; an unguarded
+        // read in the useState initializer means the app never renders at all.
+        const throwing = {
+            getItem: () => {
+                throw new Error('SecurityError');
+            },
+        };
+        expect(readStoredTheme(throwing, true)).toBe('dark');
+    });
+
+    it('survives a missing storage object', () => {
+        expect(readStoredTheme(undefined, false)).toBe('light');
+    });
+});
+
+// ---------------------------------------------------------------------------
+// storedTheme
+// ---------------------------------------------------------------------------
+
+describe('storedTheme', () => {
+    it('returns the persisted choice', () => {
+        expect(storedTheme({ getItem: () => 'light' })).toBe('light');
+    });
+
+    it('returns null when nothing valid is stored, so the OS preference wins', () => {
+        expect(storedTheme({ getItem: () => null })).toBe(null);
+        expect(storedTheme({ getItem: () => 'chartreuse' })).toBe(null);
+    });
+
+    it('returns null when storage throws', () => {
+        expect(
+            storedTheme({
+                getItem: () => {
+                    throw new Error('SecurityError');
+                },
+            }),
+        ).toBe(null);
     });
 });

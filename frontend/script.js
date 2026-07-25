@@ -10,6 +10,12 @@ import {
     toggleAllVisible,
     buildBatchUpdates,
     toCsv,
+    categoryDeletionEffects,
+    describeSelection,
+    deselectId,
+    readStoredTheme,
+    storedTheme,
+    writeStoredTheme,
     PAGE_SIZE,
 } from './utils.js';
 
@@ -28,11 +34,12 @@ async function api(path, options = {}) {
 }
 
 function useTheme() {
-    const [theme, setTheme] = useState(() => {
-        const stored = localStorage.getItem('theme');
-        if (stored === 'light' || stored === 'dark') return stored;
-        return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-    });
+    const [theme, setTheme] = useState(() =>
+        readStoredTheme(
+            globalThis.localStorage,
+            window.matchMedia('(prefers-color-scheme: dark)').matches,
+        ),
+    );
 
     useEffect(() => {
         document.documentElement.dataset.theme = theme;
@@ -42,8 +49,7 @@ function useTheme() {
         const mq = window.matchMedia('(prefers-color-scheme: dark)');
         const handler = (e) => {
             // Manual override in localStorage takes priority; only follow OS if none set.
-            const stored = localStorage.getItem('theme');
-            if (stored === 'light' || stored === 'dark') return;
+            if (storedTheme(globalThis.localStorage) !== null) return;
             setTheme(e.matches ? 'dark' : 'light');
         };
         mq.addEventListener('change', handler);
@@ -54,7 +60,7 @@ function useTheme() {
     // which is what disables OS-preference following above.
     const toggle = useCallback(() => {
         const next = theme === 'dark' ? 'light' : 'dark';
-        localStorage.setItem('theme', next);
+        writeStoredTheme(globalThis.localStorage, next);
         setTheme(next);
     }, [theme]);
 
@@ -173,13 +179,13 @@ function Tabs({
     `;
 }
 
-function SortTh({ label, sortKey, sortColumn, sortDir, onToggle, id }) {
+function SortTh({ label, sortKey, sortColumn, sortDir, onToggle }) {
     const active = sortColumn === sortKey;
     const cls = 'sortable' + (active ? (sortDir === 'asc' ? ' sort-asc' : ' sort-desc') : '');
     const indicator = active ? (sortDir === 'asc' ? '↑' : '↓') : '↕';
     const ariaSort = active ? (sortDir === 'asc' ? 'ascending' : 'descending') : undefined;
     return html`
-        <th id=${id} class=${cls} aria-sort=${ariaSort}>
+        <th class=${cls} aria-sort=${ariaSort}>
             <button class="th-sort-btn" onClick=${() => onToggle(sortKey)}>
                 ${label}<span class="sort-indicator">${indicator}</span>
             </button>
@@ -214,6 +220,7 @@ function SelectAllCheckbox({ state, onChange }) {
 
 function BatchPanel({
     selectedCount,
+    selectionLabel,
     batchDate,
     batchNotes,
     batchClearNotes,
@@ -229,7 +236,7 @@ function BatchPanel({
     // association survives iOS Safari swallowing label clicks on date inputs.
     return html`
         <div class="batch-panel">
-            <span class="batch-count">${selectedCount} selected</span>
+            <span class="batch-count">${selectionLabel}</span>
             <div class="batch-field">
                 <label for="batch-date" class="batch-label">Date</label>
                 <input
@@ -284,6 +291,7 @@ function EditableCell({
     batchMode,
 }) {
     const [editing, setEditing] = useState(!!autoEdit);
+    const [saving, setSaving] = useState(false);
     const inputRef = useRef(null);
     const tdRef = useRef(null);
     const cancelledRef = useRef(false);
@@ -323,7 +331,16 @@ function EditableCell({
             setEditing(false);
             return;
         }
-        if (newValue !== (valueRef.current ?? null)) await onSave(item.id, field, newValue);
+        if (newValue !== (valueRef.current ?? null)) {
+            // Disable rather than close: a slow save otherwise leaves an
+            // editable-looking input that re-enters commit on every blur.
+            setSaving(true);
+            try {
+                await onSave(item.id, field, newValue);
+            } finally {
+                setSaving(false);
+            }
+        }
         setEditing(false);
     }, [field, item.id, onSave]);
 
@@ -346,6 +363,7 @@ function EditableCell({
             defaultValue: value || '',
             onBlur: commit,
             onKeyDown: onKey,
+            disabled: saving,
         };
         return html`
             <td class="editable" data-field=${field}>
@@ -524,14 +542,13 @@ function ItemsTable({
                     ${
                         showNotes
                             ? html`<${SortTh}
-                                  id="notes-header"
                                   label="Notes"
                                   sortKey="notes"
                                   sortColumn=${sortColumn}
                                   sortDir=${sortDir}
                                   onToggle=${onToggleSort}
                               />`
-                            : html`<th id="notes-header">
+                            : html`<th>
                                   <button class="show-notes-btn" onClick=${onShowNotes}>
                                       + Notes
                                   </button>
@@ -672,6 +689,11 @@ function App() {
         () => computeSelectAllState(selectedIds, sortedIds),
         [selectedIds, sortedIds],
     );
+    // Apply acts on every selected id, including ones the filter is hiding.
+    const selectionLabel = useMemo(
+        () => describeSelection(selectedIds, sortedIds),
+        [selectedIds, sortedIds],
+    );
 
     // renderedCount is a dependency so the observer is recreated after each
     // page renders; observe() then re-fires the callback if the sentinel is
@@ -699,9 +721,16 @@ function App() {
         setBatchClearNotes(false);
     }, []);
 
+    // Every path that changes the category leaves batch mode: switching tabs,
+    // adding a category, and deleting one. Resetting per handler is how
+    // selections from the previous category survived into another one, where
+    // Apply would silently PUT updates to rows the user could no longer see.
+    useEffect(() => {
+        exitBatchMode();
+    }, [category, exitBatchMode]);
+
     const switchCategory = (name) => {
         if (name === category) return;
-        exitBatchMode();
         setCategory(name);
         setSortColumn('date');
         setSortDir('desc');
@@ -711,6 +740,7 @@ function App() {
     };
 
     const addCategory = async () => {
+        setError(null);
         const label = prompt('New category name:');
         if (!label || !label.trim()) return;
         try {
@@ -733,11 +763,20 @@ function App() {
     const deleteCategory = async (cat) => {
         if (!confirm(`Delete category "${cat.label}"?\n\nThis will fail if any items exist in it.`))
             return;
+        setError(null);
         try {
             await api(`/api/categories/${cat.id}`, { method: 'DELETE' });
             const remaining = categories.filter((c) => c.id !== cat.id);
             setCategories(remaining);
-            if (category === cat.name) setCategory(remaining[0]?.name ?? null);
+
+            const { resetItemView, nextCategory } = categoryDeletionEffects(
+                cat.name,
+                category,
+                remaining,
+            );
+            if (!resetItemView) return;
+
+            setCategory(nextCategory);
             setItems([]);
             setRenderedCount(PAGE_SIZE);
             setNotesForced(false);
@@ -748,6 +787,7 @@ function App() {
     };
 
     const addRow = async () => {
+        setError(null);
         try {
             const today = new Date().toISOString().slice(0, 10);
             const { item } = await api('/api/items', {
@@ -769,6 +809,7 @@ function App() {
     };
 
     const saveField = async (id, field, value) => {
+        setError(null);
         try {
             const { item } = await api(`/api/items/${id}`, {
                 method: 'PUT',
@@ -783,9 +824,13 @@ function App() {
 
     const deleteRow = async (id) => {
         if (!confirm('Delete this entry?')) return;
+        setError(null);
         try {
             await api(`/api/items/${id}`, { method: 'DELETE' });
             setItems((cur) => cur.filter((i) => i.id !== id));
+            // A deleted row left selected makes the next Apply report a
+            // spurious failure from its 404.
+            setSelectedIds((prev) => deselectId(prev, id));
         } catch (err) {
             setError(err.message);
         }
@@ -923,6 +968,7 @@ function App() {
                                     ? html`
                                           <${BatchPanel}
                                               selectedCount=${selectedIds.size}
+                                              selectionLabel=${selectionLabel}
                                               batchDate=${batchDate}
                                               batchNotes=${batchNotes}
                                               batchClearNotes=${batchClearNotes}

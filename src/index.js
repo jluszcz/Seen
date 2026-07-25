@@ -190,7 +190,26 @@ app.delete('/api/items/:id', async (c) => {
     return c.json({ success: true });
 });
 
-app.all('/api/*', (c) => c.json({ error: 'Unknown API endpoint' }, 404));
+// Hono has already matched every declared route by this point, so a request
+// whose path matches a real endpoint only got here because of its method.
+// Reporting that as an unknown endpoint sends debugging the wrong way.
+const API_ROUTES = [
+    { pattern: /^\/api\/categories$/, methods: ['GET', 'POST'] },
+    { pattern: /^\/api\/categories\/[^/]+$/, methods: ['DELETE'] },
+    { pattern: /^\/api\/items$/, methods: ['GET', 'POST'] },
+    { pattern: /^\/api\/items\/[^/]+$/, methods: ['PUT', 'DELETE'] },
+];
+
+app.all('/api/*', (c) => {
+    const path = new URL(c.req.url).pathname;
+    const route = API_ROUTES.find((r) => r.pattern.test(path));
+    if (route) {
+        return c.json({ error: `Method not allowed; try ${route.methods.join(', ')}` }, 405, {
+            Allow: route.methods.join(', '),
+        });
+    }
+    return c.json({ error: 'Unknown API endpoint' }, 404);
+});
 
 app.all('*', (c) => c.env.ASSETS.fetch(c.req.raw));
 
