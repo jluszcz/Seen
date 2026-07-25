@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, beforeEach, vi } from 'vitest';
-import { env } from 'cloudflare:test';
+import { env, applyD1Migrations } from 'cloudflare:test';
 import worker from '../../src/index.js';
 
 const mockAssetsFetch = vi.fn().mockResolvedValue(new Response('index.html'));
@@ -18,29 +18,8 @@ async function req(method, path, body) {
 }
 
 beforeAll(async () => {
-    await env.DB.prepare(
-        `
-        CREATE TABLE IF NOT EXISTS categories (
-            id         TEXT PRIMARY KEY,
-            name       TEXT UNIQUE NOT NULL,
-            label      TEXT NOT NULL,
-            sort_order INTEGER NOT NULL DEFAULT 0
-        )
-    `,
-    ).run();
-    await env.DB.prepare(
-        `
-        CREATE TABLE IF NOT EXISTS items (
-            id          TEXT PRIMARY KEY,
-            category    TEXT NOT NULL,
-            description TEXT NOT NULL,
-            date        TEXT NOT NULL,
-            notes       TEXT,
-            created_at  TEXT NOT NULL,
-            updated_at  TEXT NOT NULL
-        )
-    `,
-    ).run();
+    // The repository's own migrations, not a hand-rolled copy that can drift.
+    await applyD1Migrations(env.DB, env.TEST_MIGRATIONS);
 });
 
 beforeEach(async () => {
@@ -75,6 +54,29 @@ describe('static assets', () => {
         const response = await req('GET', '/api/nope');
         expect(response.status).toBe(404);
         expect((await response.json()).error).toBe('Unknown API endpoint');
+    });
+
+    it('returns 405 for a known path used with the wrong method', async () => {
+        // Reporting a real endpoint as "unknown" sends debugging the wrong way.
+        const response = await req('PATCH', '/api/items/item-1');
+        expect(response.status).toBe(405);
+        expect((await response.json()).error).toContain('Method not allowed');
+    });
+
+    it('still reports genuinely unknown paths as 404 whatever the method', async () => {
+        const response = await req('PATCH', '/api/nope');
+        expect(response.status).toBe(404);
+        expect((await response.json()).error).toBe('Unknown API endpoint');
+    });
+
+    it('applies the repository migrations to the test database', async () => {
+        // The suite used to hand-roll CREATE TABLEs that had already drifted
+        // from migrations/ (no idx_items_category), so a new migration would
+        // silently go unexercised.
+        const { results } = await env.DB.prepare(
+            "SELECT name FROM sqlite_master WHERE type = 'index' AND name = 'idx_items_category'",
+        ).all();
+        expect(results).toHaveLength(1);
     });
 });
 
