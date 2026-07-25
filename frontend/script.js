@@ -10,6 +10,7 @@ import {
     toggleAllVisible,
     buildBatchUpdates,
     toCsv,
+    categoryDeletionEffects,
     PAGE_SIZE,
 } from './utils.js';
 
@@ -699,9 +700,16 @@ function App() {
         setBatchClearNotes(false);
     }, []);
 
+    // Every path that changes the category leaves batch mode: switching tabs,
+    // adding a category, and deleting one. Resetting per handler is how
+    // selections from the previous category survived into another one, where
+    // Apply would silently PUT updates to rows the user could no longer see.
+    useEffect(() => {
+        exitBatchMode();
+    }, [category, exitBatchMode]);
+
     const switchCategory = (name) => {
         if (name === category) return;
-        exitBatchMode();
         setCategory(name);
         setSortColumn('date');
         setSortDir('desc');
@@ -737,7 +745,15 @@ function App() {
             await api(`/api/categories/${cat.id}`, { method: 'DELETE' });
             const remaining = categories.filter((c) => c.id !== cat.id);
             setCategories(remaining);
-            if (category === cat.name) setCategory(remaining[0]?.name ?? null);
+
+            const { resetItemView, nextCategory } = categoryDeletionEffects(
+                cat.name,
+                category,
+                remaining,
+            );
+            if (!resetItemView) return;
+
+            setCategory(nextCategory);
             setItems([]);
             setRenderedCount(PAGE_SIZE);
             setNotesForced(false);

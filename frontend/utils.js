@@ -97,3 +97,17 @@ export function buildBatchUpdates({ date, notes, clearNotes }) {
     }
     return updates;
 }
+
+// What deleting a category should do to the item view.
+//
+// Only the category currently being displayed invalidates the view. Clearing
+// items unconditionally blanks the table for a category whose rows are still
+// there, because the fetch effect keys off `category` and never re-runs when
+// `category` did not change.
+export function categoryDeletionEffects(deletedName, currentCategory, remainingCategories) {
+    const wasCurrent = deletedName === currentCategory;
+    return {
+        resetItemView: wasCurrent,
+        nextCategory: wasCurrent ? (remainingCategories[0]?.name ?? null) : currentCategory,
+    };
+}

@@ -8,6 +8,7 @@ import {
     toggleAllVisible,
     buildBatchUpdates,
     toCsv,
+    categoryDeletionEffects,
 } from '../../frontend/utils.js';
 
 // ---------------------------------------------------------------------------
@@ -330,5 +331,37 @@ describe('toCsv', () => {
     it('quotes fields containing newlines', () => {
         const csv = toCsv([{ description: 'A', date: '2026-01-15', notes: 'line1\nline2' }]);
         expect(csv).toBe('Description,Date,Notes\r\nA,2026-01-15,"line1\nline2"');
+    });
+});
+
+// ---------------------------------------------------------------------------
+// categoryDeletionEffects
+// ---------------------------------------------------------------------------
+
+describe('categoryDeletionEffects', () => {
+    const remaining = [{ name: 'books' }, { name: 'films' }];
+
+    it('moves to the first remaining category when the current one is deleted', () => {
+        expect(categoryDeletionEffects('music', 'music', remaining)).toEqual({
+            resetItemView: true,
+            nextCategory: 'books',
+        });
+    });
+
+    it('reports no category left when the last one is deleted', () => {
+        expect(categoryDeletionEffects('music', 'music', [])).toEqual({
+            resetItemView: true,
+            nextCategory: null,
+        });
+    });
+
+    it('leaves the item view alone when another category is deleted', () => {
+        // The fetch effect keys off `category`, so blanking the items without
+        // changing the category leaves the table empty until the user switches
+        // tabs — the current category's rows are still there on the server.
+        expect(categoryDeletionEffects('music', 'films', remaining)).toEqual({
+            resetItemView: false,
+            nextCategory: 'films',
+        });
     });
 });
