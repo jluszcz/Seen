@@ -111,3 +111,57 @@ export function categoryDeletionEffects(deletedName, currentCategory, remainingC
         nextCategory: wasCurrent ? (remainingCategories[0]?.name ?? null) : currentCategory,
     };
 }
+
+// Label for the batch-mode selection count.
+//
+// Apply acts on the whole selection, including rows the active filter has
+// hidden (see `toggleAllVisible` — preserving them is deliberate). A bare count
+// therefore understates what the button is about to change.
+export function describeSelection(selectedIds, visibleItemIds) {
+    const visible = new Set(visibleItemIds);
+    let hidden = 0;
+    for (const id of selectedIds) {
+        if (!visible.has(id)) hidden++;
+    }
+    const base = `${selectedIds.size} selected`;
+    return hidden > 0 ? `${base} (${hidden} hidden by filter)` : base;
+}
+
+// Remove one id from a selection, returning a new Set. A deleted row left in
+// the selection makes the next Apply report a spurious failure from its 404.
+export function deselectId(selectedIds, id) {
+    const next = new Set(selectedIds);
+    next.delete(id);
+    return next;
+}
+
+// The explicitly persisted theme, or null if the user has not chosen one.
+//
+// Storage access throws outright in some contexts (Safari private mode raises
+// SecurityError). Unguarded, that takes down the `useState` initializer below
+// and the app never renders at all.
+export function storedTheme(storage) {
+    let stored = null;
+    try {
+        stored = storage?.getItem('theme');
+    } catch {
+        // Storage unavailable: treat it as "no explicit choice".
+    }
+    return stored === 'light' || stored === 'dark' ? stored : null;
+}
+
+// Resolve the theme to use: the persisted choice, else the OS preference.
+export function readStoredTheme(storage, prefersDark) {
+    return storedTheme(storage) ?? (prefersDark ? 'dark' : 'light');
+}
+
+// Persist the theme, tolerating storage that rejects writes. A failed write
+// only means the choice won't survive a reload.
+export function writeStoredTheme(storage, theme) {
+    try {
+        storage?.setItem('theme', theme);
+        return true;
+    } catch {
+        return false;
+    }
+}
