@@ -25,6 +25,7 @@
     },
     "devDependencies": {
         "@cloudflare/vitest-pool-workers": "^0.18.8",
+        "@cloudflare/workers-types": "^5.20260722.1",
         "@eslint/js": "^10.0.1",
         "concurrently": "^10.0.3",
         "esbuild": "^0.28.1",
@@ -40,5 +41,10 @@
         "htm": "^3.1.1",
         "preact": "^10.29.3",
         "zod": "^4.4.3"
+    },
+    "allowScripts": {
+        "workerd@1.20260722.1": true,
+        "fsevents@2.3.3": true,
+        "esbuild@0.28.1": true
     }
 }
