@@ -49,7 +49,7 @@ The frontend lives in `frontend/` and is bundled to `public/` by `build.js` (esb
 - `npm test` — runs Vitest once. Tests import from `frontend/utils.js` directly; they do not depend on the bundle.
 - `npm run test:watch` — Vitest in watch mode
 
-`.github/workflows/ci.yml` is a thin caller of `jluszcz/github-utils/.github/workflows/node-ci.yml@v1` — the steps live in that shared workflow, not here. It runs `build`, `test`, `lint`, and `format:check` on Node 22 for every push and PR to `main`. The resulting check is named **"Build, Test & Lint"**, which is the name branch-protection rulesets must reference. A Prettier pre-commit hook is also configured in `.pre-commit-config.yaml`.
+`.github/workflows/ci.yml` is a thin caller of `jluszcz/github-utils/.github/workflows/node-ci.yml` — the steps live in that shared workflow, not here. It runs `build`, `test`, `lint`, and `format:check` on Node 22 for every push and PR to `main`. The resulting check is named **"Build, Test & Lint"**, which is the name branch-protection rulesets must reference. A Prettier pre-commit hook is also configured in `.pre-commit-config.yaml`.
 
 **Before committing any change, run `npm run format:check`, `npm run lint`, `npm run build`, and `npm test` locally and confirm they all pass.** These are exactly the checks CI runs, and a commit that fails any of them should not be made.
 
