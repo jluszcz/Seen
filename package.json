@@ -25,22 +25,22 @@
     },
     "devDependencies": {
         "@cloudflare/vitest-pool-workers": "^0.22.0",
-        "@cloudflare/workers-types": "^5.20260729.1",
+        "@cloudflare/workers-types": "^5.20260928.1",
         "@eslint/js": "^10.0.1",
         "concurrently": "^10.0.5",
         "esbuild": "^0.28.2",
-        "eslint": "^10.9.1",
-        "globals": "^17.11.0",
-        "prettier": "3.9.6",
-        "vitest": "^4.1.11",
-        "wrangler": "^4.114.0"
+        "eslint": "^10.11.0",
+        "globals": "^17.12.0",
+        "prettier": "3.9.9",
+        "vitest": "^5.0.2",
+        "wrangler": "^4.143.0"
     },
     "dependencies": {
-        "@hono/zod-validator": "^0.9.0",
-        "hono": "^4.13.5",
+        "@hono/zod-validator": "^0.9.1",
+        "hono": "^4.13.10",
         "htm": "^3.1.1",
         "preact": "^10.29.8",
-        "zod": "^4.5.4"
+        "zod": "^4.6.5"
     },
     "allowScripts": {
         "workerd@1.20260722.1": true,
