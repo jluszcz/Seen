@@ -16,13 +16,13 @@ A personal tracker for things you've seen — friends, family, shows, concerts, 
 
 ## Stack
 
-| Layer    | Technology                                 |
-| -------- | ------------------------------------------ |
-| Backend  | Cloudflare Workers + Hono + Zod            |
-| Database | Cloudflare D1 (SQLite)                     |
-| Frontend | Preact + htm, bundled with esbuild         |
-| Auth     | Cloudflare Access                          |
-| Testing  | Vitest + `@cloudflare/vitest-pool-workers` |
+| Layer    | Technology                           |
+| -------- | ------------------------------------ |
+| Backend  | Cloudflare Workers + Hono + Zod      |
+| Database | Cloudflare D1 (SQLite)               |
+| Frontend | Preact + htm, bundled with esbuild   |
+| Auth     | Cloudflare Access                    |
+| Testing  | Vitest + `@cloudflare/vitest-plugin` |
 
 ## Getting Started
 
