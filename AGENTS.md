@@ -19,7 +19,7 @@ This file provides guidance to AI coding agents when working with code in this r
     - `index.js` — Hono app + CRUD API for categories and items
 - `migrations/` — D1 SQL migrations (applied via wrangler)
 - `test/` — Tests
-    - `test/worker/` — Worker API tests (use `@cloudflare/vitest-pool-workers`)
+    - `test/worker/` — Worker API tests (use `@cloudflare/vitest-plugin`)
     - `test/frontend/` — Frontend unit tests (logic only, no DOM). This is a deliberate constraint: any decision worth testing gets extracted into a pure helper in `frontend/utils.js` rather than tested through rendered output. The wiring inside `App` is therefore uncovered — be correspondingly careful editing it
     - `test/worker/index.test.js` applies the repository's own migrations via `applyD1Migrations(env.DB, env.TEST_MIGRATIONS)`; the migrations are read in `vitest.config.mjs` and passed through as a binding. Do not hand-roll schema in tests — it drifts
 - `build.js` — esbuild bundler for the frontend (one-shot + `--watch` mode)
@@ -33,7 +33,7 @@ This file provides guidance to AI coding agents when working with code in this r
 - **Database**: Cloudflare D1 (SQLite)
 - **Frontend**: [Preact](https://preactjs.com/) + [htm](https://github.com/developit/htm) (no JSX build step required), bundled with esbuild
 - **Authentication**: Cloudflare Access (zero-code, dashboard-configured)
-- **Testing**: Vitest + `@cloudflare/vitest-pool-workers`
+- **Testing**: Vitest + `@cloudflare/vitest-plugin`
 - **Build**: esbuild (frontend bundle) + Wrangler CLI (Worker deploy)
 
 ## Build & Bundling
