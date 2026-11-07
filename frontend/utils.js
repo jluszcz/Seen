@@ -165,3 +165,23 @@ export function writeStoredTheme(storage, theme) {
         return false;
     }
 }
+
+// Today's date as YYYY-MM-DD in local time. `toISOString` would give the UTC
+// date, which is already tomorrow during a US evening.
+export function localIsoDate(date = new Date()) {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+}
+
+// Whether a keydown on a date input should fill in today. Modified presses are
+// left alone so browser shortcuts like Cmd+T still work.
+export function isTodayShortcut(event) {
+    return (
+        (event.key === 't' || event.key === 'T') &&
+        !event.metaKey &&
+        !event.ctrlKey &&
+        !event.altKey
+    );
+}
