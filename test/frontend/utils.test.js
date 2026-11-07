@@ -13,6 +13,8 @@ import {
     deselectId,
     readStoredTheme,
     storedTheme,
+    localIsoDate,
+    isTodayShortcut,
 } from '../../frontend/utils.js';
 
 // ---------------------------------------------------------------------------
@@ -476,5 +478,52 @@ describe('storedTheme', () => {
                 },
             }),
         ).toBe(null);
+    });
+});
+
+// ---------------------------------------------------------------------------
+// localIsoDate
+// ---------------------------------------------------------------------------
+
+describe('localIsoDate', () => {
+    it('formats the local calendar date as YYYY-MM-DD', () => {
+        expect(localIsoDate(new Date(2026, 0, 5))).toBe('2026-01-05');
+    });
+
+    // The test runtime (workerd) is pinned to UTC, so a real Date cannot tell
+    // local from UTC getters apart; a stub whose UTC accessors disagree can.
+    it('uses local time, not UTC, late in the evening', () => {
+        const lateEvening = {
+            getFullYear: () => 2026,
+            getMonth: () => 10,
+            getDate: () => 7,
+            getUTCFullYear: () => 2026,
+            getUTCMonth: () => 10,
+            getUTCDate: () => 8,
+            toISOString: () => '2026-11-08T04:59:00.000Z',
+        };
+        expect(localIsoDate(lateEvening)).toBe('2026-11-07');
+    });
+});
+
+// ---------------------------------------------------------------------------
+// isTodayShortcut
+// ---------------------------------------------------------------------------
+
+describe('isTodayShortcut', () => {
+    it('matches a bare t or T', () => {
+        expect(isTodayShortcut({ key: 't' })).toBe(true);
+        expect(isTodayShortcut({ key: 'T', shiftKey: true })).toBe(true);
+    });
+
+    it('ignores t combined with a command modifier', () => {
+        expect(isTodayShortcut({ key: 't', metaKey: true })).toBe(false);
+        expect(isTodayShortcut({ key: 't', ctrlKey: true })).toBe(false);
+        expect(isTodayShortcut({ key: 't', altKey: true })).toBe(false);
+    });
+
+    it('ignores other keys', () => {
+        expect(isTodayShortcut({ key: 'Enter' })).toBe(false);
+        expect(isTodayShortcut({ key: '1' })).toBe(false);
     });
 });

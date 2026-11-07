@@ -16,6 +16,8 @@ import {
     readStoredTheme,
     storedTheme,
     writeStoredTheme,
+    localIsoDate,
+    isTodayShortcut,
     PAGE_SIZE,
 } from './utils.js';
 
@@ -245,6 +247,12 @@ function BatchPanel({
                     class="batch-input"
                     value=${batchDate}
                     onInput=${(e) => onDateChange(e.target.value)}
+                    onKeyDown=${(e) => {
+                        if (isTodayShortcut(e)) {
+                            e.preventDefault();
+                            onDateChange(localIsoDate());
+                        }
+                    }}
                 />
             </div>
             <div class="batch-field">
@@ -346,6 +354,11 @@ function EditableCell({
 
     if (editing) {
         const onKey = (e) => {
+            if (inputType === 'date' && isTodayShortcut(e)) {
+                e.preventDefault();
+                e.target.value = localIsoDate();
+                return;
+            }
             if (e.key === 'Enter' && inputType !== 'textarea') {
                 e.preventDefault();
                 exitViaKeyboardRef.current = true;
@@ -789,7 +802,7 @@ function App() {
     const addRow = async () => {
         setError(null);
         try {
-            const today = new Date().toISOString().slice(0, 10);
+            const today = localIsoDate();
             const { item } = await api('/api/items', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },

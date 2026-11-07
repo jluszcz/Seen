@@ -10,7 +10,7 @@ This file provides guidance to AI coding agents when working with code in this r
 
 - `frontend/` — Preact + htm frontend source
     - `script.js` — `App` component + child components managing all state and rendering
-    - `utils.js` — Pure helpers (`filterItems`, `sortItems`, `hasNotes`, `formatDate`, `toCsv`, `computeSelectAllState`, `toggleAllVisible`, `buildBatchUpdates`, `categoryDeletionEffects`, `describeSelection`, `deselectId`, `storedTheme`, `readStoredTheme`, `writeStoredTheme`, `PAGE_SIZE`); shared with tests
+    - `utils.js` — Pure helpers (`filterItems`, `sortItems`, `hasNotes`, `formatDate`, `toCsv`, `computeSelectAllState`, `toggleAllVisible`, `buildBatchUpdates`, `categoryDeletionEffects`, `describeSelection`, `deselectId`, `storedTheme`, `readStoredTheme`, `writeStoredTheme`, `localIsoDate`, `isTodayShortcut`, `PAGE_SIZE`); shared with tests
     - `styles.css` — Minimal, neutral styling
 - `public/` — Served static assets
     - `index.html` — App shell that loads the bundled script
@@ -139,6 +139,7 @@ Two tables:
 - Notes column is hidden per-category when all `notes` values are null
 - Inline editing: click a cell → input appears; Enter/blur saves; Escape cancels (cancel uses a `cancelledRef` flag so the synthetic `onBlur` becomes a no-op on Escape)
 - Per-column filters in a second header row; date filter matches both ISO (`2026-01`) and locale (`Jan`) substrings
+- Pressing `t` in any date input (inline cell or batch panel) fills in today's local date (`isTodayShortcut`, `localIsoDate`); modified presses like Cmd+T pass through
 - Infinite scroll: client renders 25 rows initially, appends another 25 as an `IntersectionObserver` sentinel enters the viewport
 - Batch edit mode: select rows, then set a date and/or notes on all of them with one `PUT` per row. Selections deliberately survive filtering (`toggleAllVisible`), so the panel labels how many are hidden (`describeSelection`)
 - CSV export of the current category's filtered, sorted rows (`toCsv`)
