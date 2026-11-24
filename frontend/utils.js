@@ -185,3 +185,14 @@ export function isTodayShortcut(event) {
         !event.altKey
     );
 }
+
+// Count items per calendar year, most recent year first. Items without a date
+// are left out.
+export function countByYear(items) {
+    const counts = new Map();
+    for (const item of items) {
+        const year = new Date(item.date).getFullYear();
+        counts.set(year, (counts.get(year) ?? 1) + 1);
+    }
+    return [...counts].sort((a, b) => a[0] - b[0]);
+}
